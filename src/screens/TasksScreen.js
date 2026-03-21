@@ -1,15 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  FlatList,
-  TextInput,
-  Modal,
-  ScrollView,
-  Platform,
-  Alert,
+  View, Text, StyleSheet, TouchableOpacity, FlatList,
+  TextInput, Modal, ScrollView, Platform, Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
@@ -17,12 +9,11 @@ import { Colors } from '../constants/colors';
 import { getTasks, saveTasks } from '../utils/storage';
 import { hapticLight, hapticMedium, hapticSuccess } from '../utils/helpers';
 
-const PRIORITIES = {
-  HIGH: { label: 'High', color: Colors.danger, icon: '🔴' },
-  MEDIUM: { label: 'Medium', color: Colors.accentWarm, icon: '🟡' },
-  LOW: { label: 'Low', color: Colors.accent, icon: '🟢' },
+const PRIORITY_CONFIG = {
+  HIGH: { label: 'High', color: Colors.danger, subtleColor: Colors.dangerSubtle },
+  MEDIUM: { label: 'Med', color: Colors.warning, subtleColor: 'rgba(245,158,11,0.1)' },
+  LOW: { label: 'Low', color: Colors.success, subtleColor: Colors.successSubtle },
 };
-
 const FILTERS = ['All', 'Active', 'Completed'];
 
 export default function TasksScreen() {
@@ -32,125 +23,88 @@ export default function TasksScreen() {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskNote, setNewTaskNote] = useState('');
   const [newTaskPriority, setNewTaskPriority] = useState('MEDIUM');
-  const [editTask, setEditTask] = useState(null);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadTasks();
-    }, [])
-  );
+  useFocusEffect(useCallback(() => { loadTasks(); }, []));
 
-  const loadTasks = async () => {
-    const t = await getTasks();
-    setTasks(t);
-  };
-
-  const persist = async (updated) => {
-    setTasks(updated);
-    await saveTasks(updated);
-  };
+  const loadTasks = async () => setTasks(await getTasks());
+  const persist = async (u) => { setTasks(u); await saveTasks(u); };
 
   const addTask = async () => {
     if (!newTaskTitle.trim()) return;
     hapticMedium();
-    const task = {
-      id: Date.now().toString(),
-      title: newTaskTitle.trim(),
-      note: newTaskNote.trim(),
-      priority: newTaskPriority,
-      completed: false,
-      createdAt: Date.now(),
-      completedAt: null,
-    };
-    const updated = [task, ...tasks];
-    await persist(updated);
-    setNewTaskTitle('');
-    setNewTaskNote('');
-    setNewTaskPriority('MEDIUM');
-    setShowAddModal(false);
+    const task = { id: Date.now().toString(), title: newTaskTitle.trim(), note: newTaskNote.trim(), priority: newTaskPriority, completed: false, createdAt: Date.now(), completedAt: null };
+    await persist([task, ...tasks]);
+    setNewTaskTitle(''); setNewTaskNote(''); setNewTaskPriority('MEDIUM'); setShowAddModal(false);
   };
 
   const toggleComplete = async (id) => {
     hapticSuccess();
-    const updated = tasks.map((t) =>
-      t.id === id ? { ...t, completed: !t.completed, completedAt: !t.completed ? Date.now() : null } : t
-    );
-    await persist(updated);
+    await persist(tasks.map((t) => t.id === id ? { ...t, completed: !t.completed, completedAt: !t.completed ? Date.now() : null } : t));
   };
 
   const deleteTask = (id) => {
-    Alert.alert('Delete Task', 'Are you sure?', [
+    Alert.alert('Delete Task', 'Remove this task?', [
       { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete', style: 'destructive', onPress: async () => {
-          hapticLight();
-          const updated = tasks.filter((t) => t.id !== id);
-          await persist(updated);
-        }
-      }
+      { text: 'Delete', style: 'destructive', onPress: async () => { hapticLight(); await persist(tasks.filter((t) => t.id !== id)); } },
     ]);
   };
 
   const updatePriority = async (id, priority) => {
     hapticLight();
-    const updated = tasks.map((t) => t.id === id ? { ...t, priority } : t);
-    await persist(updated);
+    await persist(tasks.map((t) => t.id === id ? { ...t, priority } : t));
   };
 
   const getFiltered = () => {
-    let filtered = [...tasks];
-    if (filter === 'Active') filtered = filtered.filter((t) => !t.completed);
-    if (filter === 'Completed') filtered = filtered.filter((t) => t.completed);
-
-    // Sort: high priority active first
-    filtered.sort((a, b) => {
+    let f = [...tasks];
+    if (filter === 'Active') f = f.filter((t) => !t.completed);
+    if (filter === 'Completed') f = f.filter((t) => t.completed);
+    f.sort((a, b) => {
       if (a.completed !== b.completed) return a.completed ? 1 : -1;
-      const priorityOrder = { HIGH: 0, MEDIUM: 1, LOW: 2 };
-      return priorityOrder[a.priority] - priorityOrder[b.priority];
+      return { HIGH: 0, MEDIUM: 1, LOW: 2 }[a.priority] - { HIGH: 0, MEDIUM: 1, LOW: 2 }[b.priority];
     });
-
-    return filtered;
+    return f;
   };
 
-  const activeCount = tasks.filter((t) => !t.completed).length;
-  const completedCount = tasks.filter((t) => t.completed).length;
+  const activeC = tasks.filter((t) => !t.completed).length;
+  const doneC = tasks.filter((t) => t.completed).length;
+  const filtered = getFiltered();
 
-  const renderTask = ({ item }) => {
-    const p = PRIORITIES[item.priority];
+  const renderTask = ({ item, index }) => {
+    const p = PRIORITY_CONFIG[item.priority];
     return (
-      <View style={[styles.taskCard, item.completed && styles.taskCardCompleted]}>
-        {/* Priority bar */}
-        <View style={[styles.priorityBar, { backgroundColor: p.color }]} />
-
+      <View style={[styles.taskCard, index < filtered.length - 1 && styles.taskCardBorder]}>
+        <View style={[styles.priorityStripe, { backgroundColor: p.color }]} />
         <View style={styles.taskBody}>
-          <View style={styles.taskTop}>
+          <View style={styles.taskMain}>
             <TouchableOpacity
-              style={[styles.checkbox, item.completed && { backgroundColor: Colors.accent, borderColor: Colors.accent }]}
+              style={[styles.checkbox, item.completed && { backgroundColor: Colors.primary, borderColor: Colors.primary }]}
               onPress={() => toggleComplete(item.id)}
             >
               {item.completed && <Text style={styles.checkmark}>✓</Text>}
             </TouchableOpacity>
-
             <View style={styles.taskInfo}>
               <Text style={[styles.taskTitle, item.completed && styles.taskTitleDone]}>{item.title}</Text>
               {item.note ? <Text style={styles.taskNote}>{item.note}</Text> : null}
             </View>
           </View>
-
-          <View style={styles.taskFooter}>
-            <View style={styles.priorityRow}>
-              {Object.keys(PRIORITIES).map((key) => (
-                <TouchableOpacity
-                  key={key}
-                  onPress={() => updatePriority(item.id, key)}
-                  style={[styles.priorityChip, item.priority === key && { backgroundColor: PRIORITIES[key].color + '30', borderColor: PRIORITIES[key].color }]}
-                >
-                  <Text style={styles.priorityChipText}>{PRIORITIES[key].icon}</Text>
-                </TouchableOpacity>
-              ))}
+          <View style={styles.taskActions}>
+            <View style={styles.priorityChips}>
+              {Object.keys(PRIORITY_CONFIG).map((key) => {
+                const c = PRIORITY_CONFIG[key];
+                const active = item.priority === key;
+                return (
+                  <TouchableOpacity
+                    key={key}
+                    style={[styles.chip, active && { backgroundColor: c.subtleColor, borderColor: c.color }]}
+                    onPress={() => updatePriority(item.id, key)}
+                  >
+                    <Text style={[styles.chipText, active && { color: c.color }]}>{c.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
             <TouchableOpacity onPress={() => deleteTask(item.id)} style={styles.deleteBtn}>
-              <Text style={styles.deleteBtnText}>🗑</Text>
+              <Text style={styles.deleteBtnText}>✕</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -158,15 +112,12 @@ export default function TasksScreen() {
     );
   };
 
-  const filtered = getFiltered();
-
   return (
-    <LinearGradient colors={[Colors.bg, Colors.bgCard]} style={styles.container}>
-      {/* Header */}
+    <LinearGradient colors={Colors.gradientBg} style={styles.container}>
       <View style={styles.header}>
         <View>
           <Text style={styles.headerTitle}>Tasks</Text>
-          <Text style={styles.headerSub}>{activeCount} active • {completedCount} done</Text>
+          <Text style={styles.headerSub}>{activeC} active · {doneC} done</Text>
         </View>
         <TouchableOpacity onPress={() => setShowAddModal(true)} activeOpacity={0.85}>
           <LinearGradient colors={Colors.gradientPrimary} style={styles.addBtn}>
@@ -175,20 +126,13 @@ export default function TasksScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Stats row */}
+      {/* Stats */}
       <View style={styles.statsRow}>
-        <View style={styles.statBox}>
-          <Text style={styles.statNum}>{tasks.length}</Text>
-          <Text style={styles.statLabel}>Total</Text>
-        </View>
-        <View style={[styles.statBox, styles.statBoxMid]}>
-          <Text style={[styles.statNum, { color: Colors.danger }]}>{tasks.filter((t) => t.priority === 'HIGH' && !t.completed).length}</Text>
-          <Text style={styles.statLabel}>High Priority</Text>
-        </View>
-        <View style={styles.statBox}>
-          <Text style={[styles.statNum, { color: Colors.accent }]}>{completedCount}</Text>
-          <Text style={styles.statLabel}>Completed</Text>
-        </View>
+        <View style={styles.statItem}><Text style={styles.statVal}>{tasks.length}</Text><Text style={styles.statLabel}>Total</Text></View>
+        <View style={styles.statDiv} />
+        <View style={styles.statItem}><Text style={[styles.statVal, { color: Colors.danger }]}>{tasks.filter((t) => t.priority === 'HIGH' && !t.completed).length}</Text><Text style={styles.statLabel}>High</Text></View>
+        <View style={styles.statDiv} />
+        <View style={styles.statItem}><Text style={[styles.statVal, { color: Colors.success }]}>{doneC}</Text><Text style={styles.statLabel}>Done</Text></View>
       </View>
 
       {/* Filters */}
@@ -196,10 +140,10 @@ export default function TasksScreen() {
         {FILTERS.map((f) => (
           <TouchableOpacity
             key={f}
-            style={[styles.filterBtn, filter === f && { backgroundColor: Colors.primary + '25', borderColor: Colors.primary }]}
+            style={[styles.filterBtn, filter === f && styles.filterBtnActive]}
             onPress={() => { setFilter(f); hapticLight(); }}
           >
-            <Text style={[styles.filterBtnText, filter === f && { color: Colors.primary }]}>{f}</Text>
+            <Text style={[styles.filterBtnText, filter === f && styles.filterBtnTextActive]}>{f}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -207,9 +151,9 @@ export default function TasksScreen() {
       {/* List */}
       {filtered.length === 0 ? (
         <View style={styles.empty}>
-          <Text style={styles.emptyEmoji}>✅</Text>
-          <Text style={styles.emptyTitle}>{filter === 'Completed' ? 'No tasks completed yet' : 'All clear!'}</Text>
-          <Text style={styles.emptySubtitle}>Add a task to get started</Text>
+          <View style={styles.emptyIcon}><Text style={styles.emptyIconText}>✓</Text></View>
+          <Text style={styles.emptyTitle}>{filter === 'Completed' ? 'None completed yet' : 'All clear'}</Text>
+          <Text style={styles.emptySub}>Add a task to get started</Text>
         </View>
       ) : (
         <FlatList
@@ -221,47 +165,35 @@ export default function TasksScreen() {
         />
       )}
 
-      {/* Add Task Modal */}
+      {/* Add Modal */}
       <Modal visible={showAddModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>New Task</Text>
-
             <TextInput
-              style={styles.input}
-              placeholder="Task title..."
-              placeholderTextColor={Colors.textMuted}
-              value={newTaskTitle}
-              onChangeText={setNewTaskTitle}
-              autoFocus
+              style={styles.input} placeholder="Task title..." placeholderTextColor={Colors.textMuted}
+              value={newTaskTitle} onChangeText={setNewTaskTitle} autoFocus
             />
             <TextInput
-              style={[styles.input, styles.inputNote]}
-              placeholder="Notes (optional)..."
-              placeholderTextColor={Colors.textMuted}
-              value={newTaskNote}
-              onChangeText={setNewTaskNote}
-              multiline
-              numberOfLines={2}
+              style={[styles.input, styles.inputNote]} placeholder="Notes (optional)..." placeholderTextColor={Colors.textMuted}
+              value={newTaskNote} onChangeText={setNewTaskNote} multiline numberOfLines={2}
             />
-
-            <Text style={styles.priorityLabel}>Priority</Text>
+            <Text style={styles.modalLabel}>Priority</Text>
             <View style={styles.prioritySelector}>
-              {Object.keys(PRIORITIES).map((key) => {
-                const p = PRIORITIES[key];
+              {Object.keys(PRIORITY_CONFIG).map((key) => {
+                const c = PRIORITY_CONFIG[key];
+                const active = newTaskPriority === key;
                 return (
                   <TouchableOpacity
                     key={key}
-                    style={[styles.prioritySelectorBtn, newTaskPriority === key && { backgroundColor: p.color + '25', borderColor: p.color }]}
+                    style={[styles.priSelBtn, active && { backgroundColor: c.subtleColor, borderColor: c.color }]}
                     onPress={() => { setNewTaskPriority(key); hapticLight(); }}
                   >
-                    <Text style={styles.prioritySelectorEmoji}>{p.icon}</Text>
-                    <Text style={[styles.prioritySelectorText, newTaskPriority === key && { color: p.color }]}>{p.label}</Text>
+                    <Text style={[styles.priSelText, active && { color: c.color }]}>{c.label}</Text>
                   </TouchableOpacity>
                 );
               })}
             </View>
-
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => { setShowAddModal(false); hapticLight(); }}>
                 <Text style={styles.cancelBtnText}>Cancel</Text>
@@ -280,56 +212,58 @@ export default function TasksScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingTop: Platform.OS === 'ios' ? 60 : 40 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, marginBottom: 24 },
-  headerTitle: { fontSize: 32, fontWeight: '900', color: Colors.textPrimary },
-  headerSub: { fontSize: 13, color: Colors.textMuted, marginTop: 4, fontWeight: '600' },
-  addBtn: { paddingHorizontal: 22, paddingVertical: 12, borderRadius: 24, elevation: 8, shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
-  addBtnText: { color: '#fff', fontWeight: '800', fontSize: 14 },
-  statsRow: { flexDirection: 'row', marginHorizontal: 24, marginBottom: 20, backgroundColor: Colors.glass, borderRadius: 24, overflow: 'hidden', borderWidth: 1, borderColor: Colors.glassBorder },
-  statBox: { flex: 1, alignItems: 'center', paddingVertical: 18 },
-  statBoxMid: { borderLeftWidth: 1, borderRightWidth: 1, borderColor: Colors.glassBorder },
-  statNum: { fontSize: 24, fontWeight: '900', color: Colors.textPrimary },
-  statLabel: { fontSize: 11, color: Colors.textMuted, marginTop: 4, textTransform: 'uppercase', letterSpacing: 1, fontWeight: '700' },
-  filterRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 24, marginBottom: 20 },
-  filterBtn: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 22, borderWidth: 1, borderColor: Colors.glassBorder, backgroundColor: Colors.glass },
-  filterBtnText: { color: Colors.textSecondary, fontWeight: '800', fontSize: 13 },
-  list: { paddingHorizontal: 24, paddingBottom: 120, gap: 14 },
-  taskCard: { backgroundColor: Colors.glass, borderRadius: 24, borderWidth: 1, borderColor: Colors.glassBorder, flexDirection: 'row', overflow: 'hidden' },
-  taskCardCompleted: { opacity: 0.5 },
-  priorityBar: { width: 6 },
-  taskBody: { flex: 1, padding: 20 },
-  taskTop: { flexDirection: 'row', gap: 14, marginBottom: 16 },
-  checkbox: { width: 28, height: 28, borderRadius: 10, borderWidth: 2, borderColor: Colors.glassBorder, alignItems: 'center', justifyContent: 'center', marginTop: 2, backgroundColor: 'rgba(255,255,255,0.03)' },
-  checkmark: { color: '#fff', fontWeight: '900', fontSize: 14 },
+  container: { flex: 1 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: 24, paddingTop: Platform.OS === 'ios' ? 64 : 48, marginBottom: 24 },
+  headerTitle: { fontSize: 32, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -1 },
+  headerSub: { fontSize: 13, color: Colors.textMuted, marginTop: 6, fontWeight: '500' },
+  addBtn: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 20 },
+  addBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  statsRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 24, marginBottom: 20, backgroundColor: Colors.bgCard, borderRadius: 18, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden' },
+  statItem: { flex: 1, alignItems: 'center', paddingVertical: 16 },
+  statDiv: { width: 1, height: 28, backgroundColor: Colors.border },
+  statVal: { fontSize: 22, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.5 },
+  statLabel: { fontSize: 11, color: Colors.textMuted, marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: '600' },
+  filterRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 24, marginBottom: 20 },
+  filterBtn: { paddingHorizontal: 18, paddingVertical: 9, borderRadius: 20, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.bgCard },
+  filterBtnActive: { backgroundColor: Colors.primarySubtle, borderColor: Colors.borderActive },
+  filterBtnText: { color: Colors.textMuted, fontWeight: '600', fontSize: 13 },
+  filterBtnTextActive: { color: Colors.primary, fontWeight: '700' },
+  list: { paddingHorizontal: 24, paddingBottom: 120 },
+  taskCard: { flexDirection: 'row', backgroundColor: Colors.bgCard, borderWidth: 1, borderColor: Colors.border, borderRadius: 18, marginBottom: 10, overflow: 'hidden' },
+  taskCardBorder: {},
+  priorityStripe: { width: 4 },
+  taskBody: { flex: 1, padding: 16 },
+  taskMain: { flexDirection: 'row', gap: 14, marginBottom: 14 },
+  checkbox: { width: 26, height: 26, borderRadius: 8, borderWidth: 1.5, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
+  checkmark: { color: '#fff', fontWeight: '800', fontSize: 13 },
   taskInfo: { flex: 1 },
-  taskTitle: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary, lineHeight: 24 },
+  taskTitle: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary, lineHeight: 22 },
   taskTitleDone: { textDecorationLine: 'line-through', color: Colors.textMuted },
-  taskNote: { fontSize: 13, color: Colors.textMuted, marginTop: 6, lineHeight: 20, fontWeight: '500' },
-  taskFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4, paddingTop: 16, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)' },
-  priorityRow: { flexDirection: 'row', gap: 8 },
-  priorityChip: { width: 34, height: 34, borderRadius: 10, borderWidth: 1, borderColor: Colors.glassBorder, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.03)' },
-  priorityChipText: { fontSize: 14 },
-  deleteBtn: { padding: 6, backgroundColor: Colors.danger + '10', borderRadius: 10 },
-  deleteBtnText: { fontSize: 16 },
-  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: 100 },
-  emptyEmoji: { fontSize: 64, marginBottom: 20 },
-  emptyTitle: { fontSize: 22, fontWeight: '900', color: Colors.textPrimary, marginBottom: 10 },
-  emptySubtitle: { fontSize: 15, color: Colors.textMuted, fontWeight: '500' },
+  taskNote: { fontSize: 12, color: Colors.textMuted, marginTop: 4, lineHeight: 18 },
+  taskActions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  priorityChips: { flexDirection: 'row', gap: 6 },
+  chip: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.bgCard },
+  chipText: { color: Colors.textMuted, fontWeight: '700', fontSize: 11, letterSpacing: 0.3 },
+  deleteBtn: { padding: 8 },
+  deleteBtnText: { fontSize: 14, color: Colors.textMuted },
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: 80 },
+  emptyIcon: { width: 60, height: 60, borderRadius: 30, borderWidth: 2, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
+  emptyIconText: { fontSize: 24, color: Colors.textMuted },
+  emptyTitle: { fontSize: 20, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.3, marginBottom: 8 },
+  emptySub: { fontSize: 14, color: Colors.textMuted },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'flex-end' },
-  modalCard: { backgroundColor: Colors.bgElevated, borderTopLeftRadius: 36, borderTopRightRadius: 36, padding: 32, paddingBottom: 60, borderWidth: 1, borderColor: Colors.glassBorder },
-  modalTitle: { fontSize: 26, fontWeight: '900', color: Colors.textPrimary, marginBottom: 24, textAlign: 'center' },
-  input: { backgroundColor: Colors.glass, borderRadius: 18, paddingHorizontal: 20, paddingVertical: 18, color: Colors.textPrimary, fontSize: 16, borderWidth: 1, borderColor: Colors.glassBorder, marginBottom: 16 },
-  inputNote: { height: 100, textAlignVertical: 'top' },
-  priorityLabel: { color: Colors.textSecondary, fontSize: 14, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 14 },
-  prioritySelector: { flexDirection: 'row', gap: 12, marginBottom: 32 },
-  prioritySelectorBtn: { flex: 1, alignItems: 'center', paddingVertical: 14, borderRadius: 18, borderWidth: 1, borderColor: Colors.glassBorder, backgroundColor: Colors.glass },
-  prioritySelectorEmoji: { fontSize: 22, marginBottom: 6 },
-  prioritySelectorText: { color: Colors.textSecondary, fontSize: 13, fontWeight: '800' },
-  modalActions: { flexDirection: 'row', gap: 16 },
-  cancelBtn: { flex: 1, paddingVertical: 18, borderRadius: 20, borderWidth: 1, borderColor: Colors.glassBorder, alignItems: 'center' },
-  cancelBtnText: { color: Colors.textSecondary, fontWeight: '800', fontSize: 16 },
-  saveBtn: { flex: 1, borderRadius: 20, overflow: 'hidden' },
-  saveBtnGrad: { paddingVertical: 18, alignItems: 'center' },
-  saveBtnText: { color: '#fff', fontWeight: '900', fontSize: 16 },
+  modalCard: { backgroundColor: Colors.bgElevated, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 28, paddingBottom: 52, borderWidth: 1, borderColor: Colors.border },
+  modalTitle: { fontSize: 22, fontWeight: '700', color: Colors.textPrimary, marginBottom: 24, letterSpacing: -0.5 },
+  input: { backgroundColor: Colors.bgCard, borderRadius: 16, paddingHorizontal: 18, paddingVertical: 16, color: Colors.textPrimary, fontSize: 15, borderWidth: 1, borderColor: Colors.border, marginBottom: 14 },
+  inputNote: { height: 80, textAlignVertical: 'top' },
+  modalLabel: { color: Colors.textMuted, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 12 },
+  prioritySelector: { flexDirection: 'row', gap: 10, marginBottom: 28 },
+  priSelBtn: { flex: 1, alignItems: 'center', paddingVertical: 14, borderRadius: 16, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.bgCard },
+  priSelText: { color: Colors.textMuted, fontSize: 13, fontWeight: '700' },
+  modalActions: { flexDirection: 'row', gap: 12 },
+  cancelBtn: { flex: 1, paddingVertical: 16, borderRadius: 16, borderWidth: 1, borderColor: Colors.border, alignItems: 'center' },
+  cancelBtnText: { color: Colors.textSecondary, fontWeight: '600', fontSize: 15 },
+  saveBtn: { flex: 1, borderRadius: 16, overflow: 'hidden' },
+  saveBtnGrad: { paddingVertical: 16, alignItems: 'center' },
+  saveBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
 });

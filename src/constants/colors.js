@@ -1,41 +1,38 @@
-// FocusForge Premium V3 - Glassmorphism Edition
+// FocusForge — Premium Monochrome Palette
+// One accent. No noise. Clean like Linear.app.
 export const Colors = {
-  // Background & Surface
-  bg: '#08090D', // Deep space
-  bgCard: 'rgba(21, 24, 33, 0.75)',
-  surface: 'rgba(25, 29, 41, 0.5)',
-  glass: 'rgba(255, 255, 255, 0.05)',
-  glassBorder: 'rgba(255, 255, 255, 0.12)',
-  bgElevated: '#12151F',
-  bgHighlight: '#1A1E2E',
+  // Backgrounds
+  bg: '#09090B',             // near-black zinc-950
+  bgCard: 'rgba(255,255,255,0.04)',   // ultra-subtle glass
+  bgElevated: '#111113',    // slightly lighter than bg
+  bgHighlight: 'rgba(255,255,255,0.07)',
 
-  // Brand / Primary
-  primary: '#6366F1', // Indigo Vibrant
+  // Text hierarchy
+  textPrimary: '#FAFAFA',   // zinc-50
+  textSecondary: '#A1A1AA', // zinc-400
+  textMuted: '#52525B',     // zinc-600
+
+  // Single accent — Indigo
+  primary: '#6366F1',
   primaryLight: '#818CF8',
   primaryDark: '#4F46E5',
-  primaryGlow: 'rgba(99, 102, 241, 0.35)',
+  primaryGlow: 'rgba(99,102,241,0.3)',
+  primarySubtle: 'rgba(99,102,241,0.12)',
 
-  // Secondary / Accents
-  accent: '#10B981', // Emerald
-  accentLight: '#34D399',
-  accentWarm: '#F59E0B', // Amber
-  danger: '#EF4444', // Rose
+  // Semantic (used sparingly, only for meaning not decoration)
+  danger: '#EF4444',
+  dangerSubtle: 'rgba(239,68,68,0.1)',
+  success: '#10B981',
+  successSubtle: 'rgba(16,185,129,0.1)',
+  warning: '#F59E0B',
 
-  // Text
-  textPrimary: '#F8FAFC',
-  textSecondary: '#94A3B8',
-  textMuted: '#475569',
+  // Borders — hairline only
+  border: 'rgba(255,255,255,0.08)',
+  borderSubtle: 'rgba(255,255,255,0.05)',
+  borderActive: 'rgba(99,102,241,0.5)',
 
-  // Gradients for Glass effects
-  gradientGlass: ['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.05)'],
+  // Gradients
   gradientPrimary: ['#6366F1', '#4F46E5'],
-  gradientAccent: ['#10B981', '#059669'],
-  gradientWarm: ['#F59E0B', '#D97706'],
-  gradientDanger: ['#EF4444', '#DC2626'],
-  gradientCard: ['rgba(28,32,48,0.7)', 'rgba(21,24,33,0.8)'],
-
-  // Borders
-  border: 'rgba(255, 255, 255, 0.08)',
-  borderActive: 'rgba(99, 102, 241, 0.4)',
+  gradientBg: ['#09090B', '#0E0E12'],
+  gradientCard: ['rgba(255,255,255,0.06)', 'rgba(255,255,255,0.02)'],
 };
-
