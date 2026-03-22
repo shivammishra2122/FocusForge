@@ -9,6 +9,7 @@ import { Colors } from '../constants/colors';
 import { getStats, getFocusSessions, getSettings, getStreakData } from '../utils/storage';
 import { ACHIEVEMENTS, getLevelInfo, getProgressToNextLevel } from '../constants/achievements';
 import { formatMinutes, formatHours, getLastNDays, getDayLabel } from '../utils/helpers';
+import { getCategoryById } from '../constants/categories';
 
 const { width } = require('react-native').Dimensions.get('window');
 const CHART_WIDTH = width - 48;
@@ -147,11 +148,19 @@ export default function AnalyticsScreen() {
                 const modeLabel = s.mode === 'pomodoro' ? 'Focus' : s.mode === 'short_break' ? 'Short Break' : s.mode === 'long_break' ? 'Long Break' : 'Custom';
                 return (
                   <View key={s.id} style={[styles.sessionRow, idx < recentSessions.length - 1 && styles.sessionRowBorder]}>
-                    <View>
-                      <Text style={styles.sessionMode}>{modeLabel}</Text>
-                      <Text style={styles.sessionDate}>
-                        {date.toLocaleDateString()} · {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </Text>
+                    <View style={styles.sessionLeft}>
+                      <View style={styles.sessionMainInfo}>
+                        <View style={[styles.catPill, { backgroundColor: getCategoryById(s.category).color + '20' }]}>
+                          <Text style={styles.catIcon}>{getCategoryById(s.category).icon}</Text>
+                        </View>
+                        <View>
+                          <Text style={styles.sessionMode}>{modeLabel}</Text>
+                          <Text style={styles.sessionDate}>
+                            {date.toLocaleDateString()} · {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </Text>
+                        </View>
+                      </View>
+                      {s.note && <Text style={styles.sessionNote}>"{s.note}"</Text>}
                     </View>
                     <Text style={styles.sessionDur}>{formatMinutes(s.durationMinutes)}</Text>
                   </View>
@@ -175,7 +184,7 @@ const styles = StyleSheet.create({
   headerSub: { fontSize: 14, color: Colors.textMuted, marginTop: 6, fontWeight: '500' },
   sectionLabel: { fontSize: 11, color: Colors.textMuted, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase' },
   sectionTitle: { fontSize: 13, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 14 },
-  levelCard: { backgroundColor: Colors.bgCard, borderRadius: 20, padding: 22, marginBottom: 16, borderWidth: 1, borderColor: Colors.border },
+  levelCard: { backgroundColor: Colors.bgCard, borderRadius: 24, padding: 22, marginBottom: 16, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden' },
   levelHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
   levelTag: { fontSize: 11, color: Colors.primary, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 6 },
   levelTitle: { fontSize: 24, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.5 },
@@ -184,23 +193,28 @@ const styles = StyleSheet.create({
   barBg: { height: 4, backgroundColor: Colors.bgHighlight, borderRadius: 2, overflow: 'hidden', marginBottom: 10 },
   barFill: { height: '100%', backgroundColor: Colors.primary, borderRadius: 2 },
   barLabel: { color: Colors.textMuted, fontSize: 12, fontWeight: '500' },
-  goalCard: { backgroundColor: Colors.bgCard, borderRadius: 20, padding: 22, marginBottom: 28, borderWidth: 1, borderColor: Colors.border },
+  goalCard: { backgroundColor: Colors.bgCard, borderRadius: 24, padding: 22, marginBottom: 28, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden' },
   goalHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   goalVal: { color: Colors.textPrimary, fontSize: 16, fontWeight: '700' },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 28 },
-  statCard: { flex: 1, minWidth: '44%', backgroundColor: Colors.bgCard, borderRadius: 18, padding: 20, borderWidth: 1, borderColor: Colors.border, alignItems: 'center' },
+  statCard: { flex: 1, minWidth: '44%', backgroundColor: Colors.bgCard, borderRadius: 24, padding: 20, borderWidth: 1, borderColor: Colors.border, alignItems: 'center' },
   statValue: { fontSize: 28, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.5, marginBottom: 8 },
   statLabel: { fontSize: 11, color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 1, fontWeight: '700' },
-  chartCard: { backgroundColor: Colors.bgCard, borderRadius: 20, padding: 20, marginBottom: 28, borderWidth: 1, borderColor: Colors.border },
+  chartCard: { backgroundColor: Colors.bgCard, borderRadius: 24, padding: 20, marginBottom: 28, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden' },
   chartLabels: { flexDirection: 'row', gap: 8, marginTop: 10 },
   chartLabel: { fontSize: 11, color: Colors.textMuted, fontWeight: '700' },
   chartMin: { fontSize: 10, color: Colors.textMuted, marginTop: 3 },
   chartFooter: { marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderColor: Colors.borderSubtle },
   chartAvg: { fontSize: 12, color: Colors.textMuted, fontWeight: '600' },
-  sessionList: { backgroundColor: Colors.bgCard, borderRadius: 18, borderWidth: 1, borderColor: Colors.border, marginBottom: 12, overflow: 'hidden' },
-  sessionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 16 },
+  sessionList: { backgroundColor: Colors.bgCard, borderRadius: 24, borderWidth: 1, borderColor: Colors.border, marginBottom: 12, overflow: 'hidden' },
+  sessionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: 18, paddingVertical: 16 },
   sessionRowBorder: { borderBottomWidth: 1, borderBottomColor: Colors.borderSubtle },
-  sessionMode: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary, marginBottom: 4 },
-  sessionDate: { fontSize: 12, color: Colors.textMuted, fontWeight: '500' },
+  sessionLeft: { flex: 1, marginRight: 16 },
+  sessionMainInfo: { flexDirection: 'row', gap: 12, alignItems: 'center', marginBottom: 8 },
+  catPill: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  catIcon: { fontSize: 16 },
+  sessionMode: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary, textTransform: 'uppercase', letterSpacing: 0.5 },
+  sessionDate: { fontSize: 12, color: Colors.textMuted, fontWeight: '500', marginTop: 2 },
+  sessionNote: { fontSize: 13, color: Colors.textSecondary, fontStyle: 'italic', backgroundColor: Colors.bgHighlight, padding: 10, borderRadius: 12, marginTop: 4 },
   sessionDur: { fontSize: 16, fontWeight: '700', color: Colors.primary },
 });

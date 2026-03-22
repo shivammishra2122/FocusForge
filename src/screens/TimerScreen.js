@@ -7,6 +7,7 @@ import {
   Dimensions,
   Animated,
   Alert,
+  TextInput,
   Modal,
   ScrollView,
   Platform,
@@ -14,11 +15,14 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import * as KeepAwake from 'expo-keep-awake';
+import { Audio } from 'expo-av';
 import Svg, { Circle } from 'react-native-svg';
 import { Colors } from '../constants/colors';
 import { formatTime, formatMinutes, hapticLight, hapticMedium, hapticSuccess, scheduleBreakReminder, getTodayKey } from '../utils/helpers';
 import { getSettings, addSessionToStats, saveFocusSession, addFocusMinutesToDate } from '../utils/storage';
 import { getDailyQuote } from '../constants/quotes';
+import { CATEGORIES, getCategoryById } from '../constants/categories';
+import { SOUNDS, getSoundById } from '../constants/sounds';
 
 const { width } = Dimensions.get('window');
 const CIRCLE_SIZE = width * 0.72;
@@ -51,8 +55,16 @@ export default function TimerScreen({ navigation }) {
   const [pomodoroRound, setPomodoroRound] = useState(1);
   const [customMinutes, setCustomMinutes] = useState(45);
   const [showCustomModal, setShowCustomModal] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState(CATEGORIES[0].id);
   const [sessionElapsed, setSessionElapsed] = useState(0);
 
+  const [showReflectionModal, setShowReflectionModal] = useState(false);
+  const [reflectionNote, setReflectionNote] = useState('');
+  const [sessionDataToSave, setSessionDataToSave] = useState(null);
+  const [selectedSound, setSelectedSound] = useState(SOUNDS[0].id);
+  const [soundObject, setSoundObject] = useState(null);
+  const [soundLoading, setSoundLoading] = useState(false);
+  
   const intervalRef = useRef(null);
   const progressAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -88,6 +100,56 @@ export default function TimerScreen({ navigation }) {
     progressAnim.setValue(0);
   };
 
+  const loadAndPlaySound = async (soundId = selectedSound) => {
+    try {
+      if (soundObject) {
+        await soundObject.unloadAsync();
+        setSoundObject(null);
+      }
+
+      const s = getSoundById(soundId);
+      if (!s || !s.url) return;
+
+      setSoundLoading(true);
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: s.url },
+        { shouldPlay: true, isLooping: true, volume: 0.5 }
+      );
+      setSoundObject(sound);
+      setSoundLoading(false);
+    } catch (err) {
+      console.log('Error playing sound:', err);
+      setSoundLoading(false);
+    }
+  };
+
+  const stopSound = async () => {
+    if (soundObject) {
+      try {
+        await soundObject.stopAsync();
+        await soundObject.unloadAsync();
+        setSoundObject(null);
+      } catch (e) {}
+    }
+  };
+
+  const toggleSoundPlay = async (play) => {
+    if (soundObject) {
+      try {
+        if (play) await soundObject.playAsync();
+        else await soundObject.pauseAsync();
+      } catch (e) {}
+    } else if (play && selectedSound !== 'NONE') {
+      await loadAndPlaySound();
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      stopSound();
+    };
+  }, []);
+
   const startPulse = () => {
     Animated.loop(
       Animated.sequence([
@@ -107,6 +169,7 @@ export default function TimerScreen({ navigation }) {
     setIsPaused(false);
     hapticMedium();
     startPulse();
+    toggleSoundPlay(true);
     KeepAwake.activateKeepAwakeAsync();
   };
 
@@ -115,6 +178,7 @@ export default function TimerScreen({ navigation }) {
     setIsPaused(true);
     hapticLight();
     stopPulse();
+    toggleSoundPlay(false);
     if (intervalRef.current) clearInterval(intervalRef.current);
   };
 
@@ -123,6 +187,7 @@ export default function TimerScreen({ navigation }) {
     setIsPaused(false);
     hapticLight();
     stopPulse();
+    stopSound();
     if (intervalRef.current) clearInterval(intervalRef.current);
     updateDuration(mode);
     setSessionElapsed(0);
@@ -133,15 +198,41 @@ export default function TimerScreen({ navigation }) {
     hapticSuccess();
     KeepAwake.deactivateKeepAwake();
     setIsRunning(false);
+    stopSound();
     const durationMin = Math.floor(totalSeconds / 60);
     const now = Date.now();
+    
+    setSessionDataToSave({
+      id: now.toString(),
+      mode,
+      durationMinutes: durationMin,
+      timestamp: now,
+      round: pomodoroRound,
+      category: selectedCategory
+    });
+    
+    setShowReflectionModal(true);
+  };
+
+  const saveReflectionAndFinish = async () => {
+    if (!sessionDataToSave) return;
+    
+    const { durationMinutes: durationMin, mode: sMode } = sessionDataToSave;
     await addSessionToStats(durationMin);
     await addFocusMinutesToDate(getTodayKey(), durationMin);
-    await saveFocusSession({ id: now.toString(), mode, durationMinutes: durationMin, timestamp: now, round: pomodoroRound });
+    await saveFocusSession({ 
+      ...sessionDataToSave,
+      note: reflectionNote.trim() 
+    });
+
+    setShowReflectionModal(false);
+    setReflectionNote('');
+
     if (settings?.notifications) {
-      await scheduleBreakReminder(mode === TIMER_MODES.POMODORO ? settings?.pomodoroShortBreak : 0);
+      await scheduleBreakReminder(sMode === TIMER_MODES.POMODORO ? settings?.pomodoroShortBreak : 0);
     }
-    if (mode === TIMER_MODES.POMODORO) {
+    
+    if (sMode === TIMER_MODES.POMODORO) {
       const nextRound = pomodoroRound + 1;
       if (nextRound > (settings?.pomodoroRounds || 4)) {
         setPomodoroRound(1);
@@ -209,7 +300,7 @@ export default function TimerScreen({ navigation }) {
         </View>
         <TouchableOpacity
           style={styles.deepFocusBtn}
-          onPress={() => { hapticLight(); navigation.navigate('DeepFocus', { duration: totalSeconds / 60, mode }); }}
+          onPress={() => { hapticLight(); stopSound(); navigation.navigate('DeepFocus', { duration: totalSeconds / 60, mode, category: selectedCategory, soundId: selectedSound }); }}
         >
           <Text style={styles.deepFocusBtnText}>Deep Focus</Text>
         </TouchableOpacity>
@@ -229,6 +320,56 @@ export default function TimerScreen({ navigation }) {
           </TouchableOpacity>
         ))}
       </ScrollView>
+
+      {/* Category Picker */}
+      {!isRunning && !isPaused && (
+        <View style={styles.categoryRow}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryRowContent}>
+            {CATEGORIES.map((cat) => (
+              <TouchableOpacity
+                key={cat.id}
+                style={[styles.categoryBtn, selectedCategory === cat.id && { backgroundColor: cat.color + '20', borderColor: cat.color + '60' }]}
+                onPress={() => { setSelectedCategory(cat.id); hapticLight(); }}
+              >
+                <Text style={styles.categoryIcon}>{cat.icon}</Text>
+                <Text style={[styles.categoryLabel, selectedCategory === cat.id && { color: cat.color, fontWeight: '700' }]}>{cat.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
+      {/* Active Category Display */}
+      {(isRunning || isPaused) && (
+        <View style={styles.activeCategoryWrap}>
+          <Text style={styles.activeCategoryLabel}>
+            {getCategoryById(selectedCategory).icon} Focus on {getCategoryById(selectedCategory).label}
+          </Text>
+          {selectedSound !== 'NONE' && (
+            <Text style={styles.activeSoundLabel}>
+              {getSoundById(selectedSound).icon} {getSoundById(selectedSound).label}
+            </Text>
+          )}
+        </View>
+      )}
+
+      {/* Sound Selector */}
+      {!isRunning && !isPaused && (
+        <View style={styles.soundRow}>
+           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryRowContent}>
+            {SOUNDS.map((s) => (
+              <TouchableOpacity
+                key={s.id}
+                style={[styles.categoryBtn, selectedSound === s.id && { backgroundColor: Colors.primarySubtle, borderColor: Colors.borderActive }]}
+                onPress={() => { setSelectedSound(s.id); hapticLight(); }}
+              >
+                <Text style={styles.categoryIcon}>{s.icon}</Text>
+                <Text style={[styles.categoryLabel, selectedSound === s.id && { color: Colors.primary, fontWeight: '700' }]}>{s.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
 
       {/* Timer Circle */}
       <Animated.View style={[styles.timerWrapper, { transform: [{ scale: pulseAnim }] }]}>
@@ -252,6 +393,46 @@ export default function TimerScreen({ navigation }) {
           </Text>
         </View>
       </Animated.View>
+
+      {/* Reflection Modal */}
+      <Modal visible={showReflectionModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.reflectionIcon}>✨</Text>
+            <Text style={styles.modalTitle}>Session Complete!</Text>
+            <Text style={styles.modalSub}>What did you focus on during this session?</Text>
+            
+            <View style={styles.reflectionContainer}>
+              <Text style={styles.reflectionCategory}>
+                Tag: {getCategoryById(selectedCategory).icon} {getCategoryById(selectedCategory).label}
+              </Text>
+              <TextInput
+                style={styles.reflectionInput}
+                placeholder="Briefly describe your work..."
+                placeholderTextColor={Colors.textMuted}
+                autoFocus
+                multiline
+                numberOfLines={3}
+                value={reflectionNote}
+                onChangeText={setReflectionNote}
+              />
+            </View>
+
+            <TouchableOpacity style={styles.confirmBtn} onPress={saveReflectionAndFinish}>
+              <LinearGradient colors={Colors.gradientPrimary} style={styles.confirmGrad}>
+                <Text style={styles.confirmText}>Save & Continue</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.skipBtn} 
+              onPress={() => { setReflectionNote(''); saveReflectionAndFinish(); }}
+            >
+              <Text style={styles.skipBtnText}>Skip reflection</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Controls */}
       <View style={styles.controls}>
@@ -321,11 +502,11 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, marginBottom: 20 },
   headerTitle: { fontSize: 22, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.5 },
   headerSub: { fontSize: 12, color: Colors.textMuted, marginTop: 4, fontWeight: '500' },
-  deepFocusBtn: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: 20, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.bgCard },
+  deepFocusBtn: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: 24, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.bgCard },
   deepFocusBtnText: { color: Colors.primary, fontSize: 13, fontWeight: '600' },
   modeScroll: { maxHeight: 52 },
   modeScrollContent: { paddingHorizontal: 24, gap: 8, alignItems: 'center' },
-  modeBtn: { paddingHorizontal: 18, paddingVertical: 9, borderRadius: 20, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.bgCard },
+  modeBtn: { paddingHorizontal: 18, paddingVertical: 9, borderRadius: 24, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.bgCard },
   modeBtnActive: { backgroundColor: Colors.primarySubtle, borderColor: Colors.borderActive },
   modeBtnText: { color: Colors.textMuted, fontSize: 13, fontWeight: '600' },
   modeBtnTextActive: { color: Colors.primary, fontWeight: '700' },
@@ -339,21 +520,41 @@ const styles = StyleSheet.create({
   ctrlBtnText: { fontSize: 20, color: Colors.textSecondary },
   playBtn: { width: 84, height: 84, borderRadius: 42, alignItems: 'center', justifyContent: 'center' },
   playBtnText: { fontSize: 28, color: '#fff' },
-  elapsedBadge: { alignSelf: 'center', marginTop: 20, paddingHorizontal: 16, paddingVertical: 7, backgroundColor: Colors.primarySubtle, borderRadius: 20, borderWidth: 1, borderColor: Colors.borderActive },
+  elapsedBadge: { alignSelf: 'center', marginTop: 20, paddingHorizontal: 16, paddingVertical: 7, backgroundColor: Colors.primarySubtle, borderRadius: 24, borderWidth: 1, borderColor: Colors.borderActive },
   elapsedText: { color: Colors.primary, fontSize: 13, fontWeight: '600' },
-  quoteCard: { position: 'absolute', bottom: 40, left: 24, right: 24, flexDirection: 'row', gap: 14, backgroundColor: Colors.bgCard, borderRadius: 18, padding: 18, borderWidth: 1, borderColor: Colors.border },
+  quoteCard: { position: 'absolute', bottom: 40, left: 24, right: 24, flexDirection: 'row', gap: 14, backgroundColor: Colors.bgCard, borderRadius: 24, padding: 18, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden' },
   quoteBar: { width: 3, borderRadius: 2, backgroundColor: Colors.primary, alignSelf: 'stretch' },
   quoteText: { flex: 1, color: Colors.textMuted, fontSize: 13, fontStyle: 'italic', lineHeight: 20 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'flex-end' },
   modalCard: { backgroundColor: Colors.bgElevated, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 28, paddingBottom: 52, borderWidth: 1, borderColor: Colors.border },
   modalTitle: { fontSize: 22, fontWeight: '700', color: Colors.textPrimary, textAlign: 'center', marginBottom: 8, letterSpacing: -0.5 },
   modalSub: { fontSize: 14, color: Colors.textMuted, textAlign: 'center', marginBottom: 28 },
+  
+  reflectionIcon: { fontSize: 40, textAlign: 'center', marginBottom: 12 },
+  reflectionContainer: { marginBottom: 24 },
+  reflectionCategory: { fontSize: 12, color: Colors.primary, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, textAlign: 'center' },
+  reflectionInput: { backgroundColor: Colors.bgCard, borderRadius: 16, padding: 18, color: Colors.textPrimary, fontSize: 15, borderWidth: 1, borderColor: Colors.border, textAlignVertical: 'top', minHeight: 100 },
+  skipBtn: { marginTop: 16, paddingVertical: 12, alignItems: 'center' },
+  skipBtnText: { color: Colors.textMuted, fontSize: 13, fontWeight: '500' },
+
   minuteGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center', marginBottom: 28 },
   minuteBtn: { paddingHorizontal: 22, paddingVertical: 12, borderRadius: 14, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.bgCard },
   minuteBtnActive: { backgroundColor: Colors.primarySubtle, borderColor: Colors.borderActive },
   minuteBtnText: { color: Colors.textSecondary, fontWeight: '600', fontSize: 15 },
   minuteBtnTextActive: { color: Colors.primary, fontWeight: '700' },
-  confirmBtn: { borderRadius: 16, overflow: 'hidden' },
+  confirmBtn: { borderRadius: 24, overflow: 'hidden' },
   confirmGrad: { paddingVertical: 16, alignItems: 'center' },
   confirmText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+
+  categoryRow: { marginTop: 12, marginBottom: 4 },
+  categoryRowContent: { paddingHorizontal: 24, gap: 10 },
+  categoryBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 24, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.bgCard },
+  categoryIcon: { fontSize: 14 },
+  categoryLabel: { fontSize: 13, color: Colors.textMuted, fontWeight: '500' },
+  
+  activeCategoryWrap: { marginTop: 16, alignItems: 'center' },
+  activeCategoryLabel: { color: Colors.textSecondary, fontSize: 14, fontWeight: '600', letterSpacing: 0.3 },
+  activeSoundLabel: { color: Colors.textMuted, fontSize: 12, marginTop: 4, fontWeight: '500' },
+  
+  soundRow: { marginTop: 8, marginBottom: 12 },
 });
