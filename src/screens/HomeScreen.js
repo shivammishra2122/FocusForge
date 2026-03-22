@@ -6,15 +6,34 @@ import {
   ScrollView,
   TouchableOpacity,
   Platform,
+  Image,
+  Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
-import { Colors } from '../constants/colors';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getStats, getUserProfile, getTasks, getSettings, getStreakData, getUnlockedAchievements } from '../utils/storage';
 import { ACHIEVEMENTS, getLevelInfo } from '../constants/achievements';
-import { getCurrentBoss, getWeekNumber } from '../constants/challenges';
 import { formatMinutes, getTodayKey, getLastNDays, hapticLight } from '../utils/helpers';
-import { getDailyQuote } from '../constants/quotes';
+
+const { width } = Dimensions.get('window');
+
+// Local Design Tokens matching the "Obsidian" Stitch theme
+const Theme = {
+  bg: '#131315',
+  surface: '#1b1b1d',
+  surfaceHigh: '#2a2a2c',
+  surfaceHighest: '#353437',
+  onSurface: '#e5e1e4',
+  onSurfaceVariant: '#c8c6ca',
+  primary: '#c0c1ff',
+  primaryVariant: '#696df8',
+  tertiary: '#d0bcff',
+  tertiaryGradient: '#8d5ff9',
+  secondary: '#c4c1fb',
+  error: '#ffb4ab',
+  border: 'rgba(71, 70, 74, 0.15)',
+};
 
 export default function HomeScreen({ navigation }) {
   const [profile, setProfile] = useState(null);
@@ -22,9 +41,7 @@ export default function HomeScreen({ navigation }) {
   const [tasks, setTasks] = useState([]);
   const [settings, setSettings] = useState(null);
   const [todayMinutes, setTodayMinutes] = useState(0);
-  const [weekMinutes, setWeekMinutes] = useState(0);
-
-  const quote = getDailyQuote();
+  const [weekData, setWeekData] = useState([]);
 
   useFocusEffect(
     useCallback(() => {
@@ -45,12 +62,18 @@ export default function HomeScreen({ navigation }) {
     setStats(s);
     setTasks(t);
     setSettings(sett);
-    setTodayMinutes(streakData[getTodayKey()] || 0);
+    
+    const today = getTodayKey();
+    setTodayMinutes(streakData[today] || 0);
 
     const weekDays = getLastNDays(7);
-    const wMin = weekDays.reduce((acc, d) => acc + (streakData[d] || 0), 0);
-    setWeekMinutes(wMin);
-
+    const wd = weekDays.map(d => ({
+      date: d,
+      minutes: streakData[d] || 0,
+    }));
+    setWeekData(wd);
+    
+    // Auto-unlock achievements
     for (const a of ACHIEVEMENTS) {
       if (!unlockedIds.includes(a.id) && a.condition(s)) {
         const { unlockAchievement, saveStats } = require('../utils/storage');
@@ -66,283 +89,225 @@ export default function HomeScreen({ navigation }) {
   const goalMinutes = (settings.dailyGoalHours || 2) * 60;
   const goalProgress = Math.min(todayMinutes / goalMinutes, 1);
   const activeTasks = tasks.filter((t) => !t.completed);
-  const highPriorityTasks = activeTasks.filter((t) => t.priority === 'HIGH').slice(0, 3);
+  const topTask = activeTasks.length > 0 ? activeTasks[0] : null;
 
-  const getHour = () => new Date().getHours();
+  const h = Math.floor(todayMinutes / 60);
+  const m = todayMinutes % 60;
 
-  const last7 = getLastNDays(7);
+  const daysLabel = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
   return (
-    <LinearGradient colors={Colors.gradientBg} style={styles.container}>
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity onPress={() => navigation.openDrawer && navigation.openDrawer()}>
+            <MaterialCommunityIcons name="menu" size={26} color={Theme.primary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>OBSIDIAN</Text>
+        </View>
+        <TouchableOpacity style={styles.profileBtn} onPress={() => navigation.navigate('Profile')}>
+           <Image
+            source={{ uri: profile?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80' }}
+            style={styles.profileImg}
+          />
+        </TouchableOpacity>
+      </View>
+
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>
-              {getHour() < 12 ? 'Good morning' : getHour() < 17 ? 'Good afternoon' : 'Good evening'},
-            </Text>
-            <Text style={styles.name}>{profile?.name || 'Student'}</Text>
+        
+        {/* Today's Focus Section */}
+        <View style={styles.focusSection}>
+          <Text style={styles.focusLabel}>TODAY'S FOCUS TIME</Text>
+          <View style={styles.timeRow}>
+            <Text style={styles.timeVal}>{h}</Text>
+            <Text style={styles.timeUnit}>h</Text>
+            <Text style={[styles.timeVal, { marginLeft: 8 }]}>{m}</Text>
+            <Text style={styles.timeUnit}>m</Text>
           </View>
-          <TouchableOpacity
-            style={styles.levelBadge}
-            onPress={() => navigation.navigate('Achievements')}
-          >
-            <Text style={styles.levelBadgeText}>Lv.{levelInfo.level}</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Goal Card */}
-        <View style={styles.goalCard}>
-          <View style={styles.goalTop}>
-            <View>
-              <Text style={styles.goalLabel}>TODAY'S GOAL</Text>
-              <Text style={styles.goalTime}>{formatMinutes(todayMinutes)} / {formatMinutes(goalMinutes)}</Text>
+          <View style={styles.progressRow}>
+            <View style={styles.progressBarBg}>
+              <LinearGradient
+                colors={[Theme.secondary, Theme.primary]}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                style={[styles.progressBarFill, { width: `${goalProgress * 100}%` }]}
+              />
             </View>
-            <View style={styles.streakCol}>
-              <Text style={styles.streakNum}>{stats.streak}</Text>
-              <Text style={styles.streakLabel}>day streak</Text>
-            </View>
+            <Text style={styles.progressText}>{Math.round(goalProgress * 100)}% OF GOAL</Text>
           </View>
-          <View style={styles.goalBarBg}>
-            <View style={[styles.goalBarFill, { width: `${goalProgress * 100}%` }]} />
-          </View>
-          <Text style={styles.goalPercent}>{Math.round(goalProgress * 100)}% complete</Text>
         </View>
 
-        {/* Quick Actions */}
-        <View style={styles.quickRow}>
-          <TouchableOpacity
-            style={styles.startBtn}
-            onPress={() => { hapticLight(); navigation.navigate('Timer'); }}
-            activeOpacity={0.85}
+        {/* Primary CTA */}
+        <TouchableOpacity
+          style={styles.ctaOuter}
+          activeOpacity={0.85}
+          onPress={() => { hapticLight(); navigation.navigate('Timer'); }}
+        >
+          <LinearGradient
+            colors={[Theme.primary, Theme.primaryVariant]}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+            style={styles.ctaBorder}
           >
-            <LinearGradient colors={Colors.gradientPrimary} style={styles.startBtnGrad}>
-              <Text style={styles.startBtnIcon}>▶</Text>
-              <Text style={styles.startBtnText}>Start Focus</Text>
-              <Text style={styles.startBtnSub}>25 min Pomodoro</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-          <View style={styles.quickCol}>
-            <TouchableOpacity
-              style={styles.quickCard}
-              onPress={() => { hapticLight(); navigation.navigate('Tasks'); }}
-            >
-              <Text style={styles.quickCardLabel}>Tasks</Text>
-              <Text style={styles.quickCardValue}>{activeTasks.length}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.quickCard}
-              onPress={() => { hapticLight(); navigation.navigate('Analytics'); }}
-            >
-              <Text style={styles.quickCardLabel}>Analytics</Text>
-              <Text style={styles.quickCardValue}>{stats.totalSessions}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+            <View style={styles.ctaInner}>
+              <MaterialCommunityIcons name="lightning-bolt" size={32} color={Theme.primary} style={{ marginBottom: 8 }} />
+              <Text style={styles.ctaTitle}>Forge Focus</Text>
+              <Text style={styles.ctaSub}>INITIALIZE DEEP WORK SESSION</Text>
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
 
-        {/* Weekly Challenge Boss */}
-        {(() => {
-          const weekNum = getWeekNumber();
-          const boss = getCurrentBoss(weekNum);
-          const bossHP = boss.hp;
-          const hpProgress = Math.min(weekMinutes / bossHP, 1);
-          const isDefeated = weekMinutes >= bossHP;
-          
-          return (
-            <View style={styles.bossCard}>
-              <View style={styles.bossHeader}>
-                <View>
-                  <Text style={styles.bossTag}>WEEKLY CHALLENGE</Text>
-                  <Text style={styles.bossName}>{boss.name}</Text>
-                </View>
-                <Text style={styles.bossEmoji}>{isDefeated ? '🏆' : boss.icon}</Text>
+        {/* Active Project Card */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>ACTIVE PROJECT</Text>
+          <View style={styles.projectCard}>
+            <TouchableOpacity style={styles.moreBtn}>
+              <MaterialCommunityIcons name="dots-vertical" size={20} color="rgba(192,193,255,0.4)" />
+            </TouchableOpacity>
+            
+            <View style={styles.projectRow}>
+              <View style={styles.projectIconWrapper}>
+                <MaterialCommunityIcons name="google-circles-extended" size={24} color={Theme.tertiary} />
               </View>
-              
-              <View style={styles.bossStats}>
-                <View style={styles.hpBarContainer}>
-                  <View style={styles.hpLabelRow}>
-                    <Text style={styles.hpLabel}>{isDefeated ? 'BOSS DEFEATED' : 'BOSS HP'}</Text>
-                    <Text style={styles.hpValue}>{isDefeated ? '0' : Math.max(0, bossHP - weekMinutes)} / {bossHP} min</Text>
+              <View style={styles.projectInfo}>
+                <Text style={styles.projectTitle} numberOfLines={1}>{topTask?.title || "Neural Interface Design"}</Text>
+                <Text style={styles.projectDesc} numberOfLines={2}>{topTask?.notes || "System architecture and high-fidelity wireframing phase."}</Text>
+                
+                <View style={styles.projectProgressCont}>
+                  <View style={styles.projectProgressRow}>
+                    <Text style={styles.projectProgressLabel}>XP PROGRESS</Text>
+                    <Text style={styles.projectProgressVal}>{stats.xp} / {levelInfo.nextXp || 2000} XP</Text>
                   </View>
-                  <View style={styles.hpBarBg}>
-                    <LinearGradient 
-                      colors={isDefeated ? ['#10B981', '#059669'] : ['#EF4444', '#DC2626']} 
-                      style={[styles.hpBarFill, { width: `${hpProgress * 100}%` }]} 
-                      start={{x:0, y:0}} end={{x:1, y:0}}
+                  <View style={styles.projBarBg}>
+                    <LinearGradient
+                      colors={[Theme.tertiary, Theme.primary]}
+                      start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                      style={[styles.projBarFill, { width: `${Math.min((stats.xp/(levelInfo.nextXp||2000))*100, 100)}%` }]}
                     />
                   </View>
                 </View>
-                <View style={styles.bossReward}>
-                  <Text style={styles.rewardXp}>+{boss.xp} XP</Text>
-                  <Text style={styles.rewardLabel}>REWARD</Text>
-                </View>
               </View>
-              <Text style={styles.bossDesc}>
-                {isDefeated 
-                  ? `Outstanding! You have defeated ${boss.name} and secured the weekly focus reward.`
-                  : boss.description}
-              </Text>
             </View>
-          );
-        })()}
+          </View>
+        </View>
 
-        {/* Weekly Streak */}
+        {/* Stats Grid */}
+        <View style={styles.statsGrid}>
+          <View style={styles.statBox}>
+            <MaterialCommunityIcons name="fire" size={28} color="rgba(255, 180, 171, 0.8)" style={{ marginBottom: 4 }} />
+            <Text style={styles.statVal}>{stats.streak}</Text>
+            <Text style={styles.statLabel}>DAY STREAK</Text>
+          </View>
+          <View style={styles.statBox}>
+            <MaterialCommunityIcons name="star-circle" size={28} color={Theme.secondary} style={{ marginBottom: 4 }} />
+            <Text style={styles.statVal}>LVL {levelInfo.level}</Text>
+            <Text style={styles.statLabel} numberOfLines={1}>{levelInfo.title || "Digital Architect"}</Text>
+          </View>
+        </View>
+
+        {/* Focus Analytics */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Weekly Streak</Text>
-          <View style={styles.streakDays}>
-            {last7.map((_, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.streakDot,
-                  i < stats.streak && stats.streak > 0 && styles.streakDotActive,
-                ]}
-              />
-            ))}
-          </View>
-        </View>
-
-        {/* Stats */}
-        <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{stats.totalSessions}</Text>
-            <Text style={styles.statLabel}>Sessions</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: Colors.primary }]}>{formatMinutes(stats.totalMinutes)}</Text>
-            <Text style={styles.statLabel}>Total Focus</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{stats.xp}</Text>
-            <Text style={styles.statLabel}>XP</Text>
-          </View>
-        </View>
-
-        {/* Priority Tasks */}
-        {highPriorityTasks.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Priority Tasks</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Tasks')}>
-                <Text style={styles.seeAll}>See all</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.taskList}>
-              {highPriorityTasks.map((task, idx) => (
-                <View
-                  key={task.id}
-                  style={[styles.taskRow, idx < highPriorityTasks.length - 1 && styles.taskRowBorder]}
-                >
-                  <View style={styles.taskDot} />
-                  <Text style={styles.taskName} numberOfLines={1}>{task.title}</Text>
-                  <Text style={styles.taskBadge}>HIGH</Text>
-                </View>
-              ))}
+          <View style={styles.analyticsHeader}>
+            <Text style={styles.sectionLabel}>FOCUS ANALYTICS</Text>
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>+12% vs LW</Text>
             </View>
           </View>
-        )}
-
-        {/* Quote */}
-        <View style={styles.quoteCard}>
-          <View style={styles.quoteAccent} />
-          <View style={styles.quoteContent}>
-            <Text style={styles.quoteText}>{quote.text}</Text>
-            <Text style={styles.quoteAuthor}>— {quote.author}</Text>
+          
+          <View style={styles.chartCard}>
+            <View style={styles.chartContainer}>
+               {weekData.map((day, idx) => {
+                 const h = Math.max(0.1, Math.min(day.minutes / (goalMinutes || 60), 1));
+                 const isToday = idx === weekData.length - 1;
+                 return (
+                   <View key={idx} style={styles.chartCol}>
+                      <View style={styles.chartBarWrapper}>
+                        {isToday ? (
+                          <LinearGradient
+                            colors={['rgba(192,193,255,0.4)', Theme.primary]}
+                            style={[styles.chartBar, { height: `${h * 100}%` }]}
+                          />
+                        ) : (
+                          <View style={[styles.chartBar, { height: `${h * 100}%`, backgroundColor: Theme.surfaceHighest }]} />
+                        )}
+                      </View>
+                      <Text style={[styles.chartDay, isToday && styles.chartDayActive]}>
+                        {daysLabel[idx % 7]}
+                      </Text>
+                   </View>
+                 );
+               })}
+            </View>
           </View>
         </View>
 
-        <View style={{ height: 110 }} />
+        <View style={{ height: 160 }} />
       </ScrollView>
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  scroll: { paddingHorizontal: 24, paddingTop: Platform.OS === 'ios' ? 64 : 48 },
-
+  container: { flex: 1, backgroundColor: Theme.bg },
+  
   // Header
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 },
-  greeting: { fontSize: 13, color: Colors.textMuted, fontWeight: '500', letterSpacing: 0.2 },
-  name: { fontSize: 28, fontWeight: '700', color: Colors.textPrimary, marginTop: 4, letterSpacing: -0.5 },
-  levelBadge: { backgroundColor: Colors.primarySubtle, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: Colors.borderActive },
-  levelBadgeText: { color: Colors.primary, fontWeight: '700', fontSize: 13, letterSpacing: 0.5 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 16, backgroundColor: 'rgba(19, 19, 21, 0.8)', zIndex: 10 },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  headerTitle: { fontSize: 20, color: Theme.onSurface, fontWeight: '300', letterSpacing: 4 },
+  profileBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: Theme.surfaceHighest, borderWidth: 1, borderColor: 'rgba(71,70,74,0.3)', overflow: 'hidden' },
+  profileImg: { width: '100%', height: '100%' },
 
-  // Goal Card
-  goalCard: { backgroundColor: Colors.bgCard, borderRadius: 24, padding: 22, marginBottom: 20, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden' },
-  goalTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
-  goalLabel: { fontSize: 11, color: Colors.textMuted, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 },
-  goalTime: { fontSize: 26, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.5 },
-  streakCol: { alignItems: 'flex-end' },
-  streakNum: { fontSize: 26, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.5 },
-  streakLabel: { fontSize: 11, color: Colors.textMuted, fontWeight: '500', marginTop: 4 },
-  goalBarBg: { height: 4, backgroundColor: Colors.bgHighlight, borderRadius: 2, overflow: 'hidden', marginBottom: 10 },
-  goalBarFill: { height: '100%', backgroundColor: Colors.primary, borderRadius: 2 },
-  goalPercent: { fontSize: 12, color: Colors.textMuted, fontWeight: '500' },
+  scroll: { paddingHorizontal: 24, paddingTop: 32 },
 
-  // Quick Actions
-  quickRow: { flexDirection: 'row', gap: 14, marginBottom: 28 },
-  startBtn: { flex: 1.6, borderRadius: 24, overflow: 'hidden' },
-  startBtnGrad: { padding: 24, minHeight: 160, justifyContent: 'flex-end', borderRadius: 24 },
-  startBtnIcon: { fontSize: 22, color: 'rgba(255,255,255,0.7)', marginBottom: 12 },
-  startBtnText: { fontSize: 20, fontWeight: '700', color: '#fff', letterSpacing: -0.3 },
-  startBtnSub: { fontSize: 13, color: 'rgba(255,255,255,0.65)', marginTop: 4 },
-  quickCol: { flex: 1, gap: 14 },
-  quickCard: { flex: 1, backgroundColor: Colors.bgCard, borderRadius: 24, padding: 18, borderWidth: 1, borderColor: Colors.border, justifyContent: 'space-between', overflow: 'hidden' },
-  quickCardLabel: { fontSize: 12, color: Colors.textMuted, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.8 },
-  quickCardValue: { fontSize: 24, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.5 },
+  // Today's Focus
+  focusSection: { alignItems: 'center', marginBottom: 40 },
+  focusLabel: { fontSize: 10, color: Theme.onSurfaceVariant, textTransform: 'uppercase', letterSpacing: 2, fontWeight: '500', marginBottom: 8 },
+  timeRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center' },
+  timeVal: { fontSize: 60, fontWeight: '800', color: Theme.onSurface, letterSpacing: -2, lineHeight: 64 },
+  timeUnit: { fontSize: 60, fontWeight: '800', color: Theme.primary, opacity: 0.8, letterSpacing: -2, lineHeight: 64 },
+  progressRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 12 },
+  progressBarBg: { height: 6, width: 120, backgroundColor: '#0e0e10', borderRadius: 3, overflow: 'hidden' },
+  progressBarFill: { height: '100%', borderRadius: 3 },
+  progressText: { fontSize: 10, color: 'rgba(192,193,255,0.8)', fontWeight: '500', letterSpacing: 0.5 },
 
-  // Section
-  section: { marginBottom: 24 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
-  sectionTitle: { fontSize: 13, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 1.2 },
-  seeAll: { fontSize: 13, color: Colors.primary, fontWeight: '600' },
+  // CTA
+  ctaOuter: { width: '100%', borderRadius: 12, marginBottom: 40, shadowColor: 'rgba(4,0,81,0.25)', shadowOffset: { width: 0, height: 20 }, shadowOpacity: 1, shadowRadius: 40, elevation: 10 },
+  ctaBorder: { padding: 1, borderRadius: 12 },
+  ctaInner: { backgroundColor: Theme.surfaceHigh, borderRadius: 11, paddingVertical: 24, alignItems: 'center', justifyContent: 'center' },
+  ctaTitle: { fontSize: 18, fontWeight: '700', color: Theme.onSurface, letterSpacing: -0.5 },
+  ctaSub: { fontSize: 10, color: Theme.onSurfaceVariant, textTransform: 'uppercase', letterSpacing: 2, marginTop: 4, opacity: 0.6 },
 
-  // Streak
-  streakDays: { flexDirection: 'row', gap: 8, marginTop: 14 },
-  streakDot: { flex: 1, height: 8, borderRadius: 4, backgroundColor: Colors.bgHighlight },
-  streakDotActive: { backgroundColor: Colors.primary },
+  // Active Project
+  section: { marginBottom: 40 },
+  sectionLabel: { fontSize: 10, color: Theme.onSurfaceVariant, textTransform: 'uppercase', letterSpacing: 2, fontWeight: '500', marginBottom: 16, paddingHorizontal: 4 },
+  projectCard: { backgroundColor: 'rgba(42, 42, 44, 0.6)', borderRadius: 16, padding: 24, borderWidth: 1, borderColor: 'rgba(71,70,74,0.1)', overflow: 'hidden' },
+  moreBtn: { position: 'absolute', top: 16, right: 16, padding: 4 },
+  projectRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 20 },
+  projectIconWrapper: { width: 56, height: 56, borderRadius: 12, backgroundColor: Theme.surfaceHighest, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(71,70,74,0.2)' },
+  projectInfo: { flex: 1 },
+  projectTitle: { fontSize: 20, fontWeight: '700', color: Theme.onSurface, letterSpacing: -0.5 },
+  projectDesc: { fontSize: 14, color: Theme.onSurfaceVariant, marginTop: 6, lineHeight: 20 },
+  projectProgressCont: { marginTop: 24 },
+  projectProgressRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 8 },
+  projectProgressLabel: { fontSize: 10, color: Theme.onSurfaceVariant, textTransform: 'uppercase', letterSpacing: 1 },
+  projectProgressVal: { fontSize: 12, color: Theme.primary, fontWeight: '700' },
+  projBarBg: { height: 8, width: '100%', backgroundColor: '#0e0e10', borderRadius: 4, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(71,70,74,0.05)' },
+  projBarFill: { height: '100%', borderRadius: 4 },
 
-  // Stats
-  statsRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.bgCard, borderRadius: 24, marginBottom: 28, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden' },
-  statItem: { flex: 1, alignItems: 'center', paddingVertical: 20 },
-  statDivider: { width: 1, height: 32, backgroundColor: Colors.border },
-  statValue: { fontSize: 22, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.5 },
-  statLabel: { fontSize: 11, color: Colors.textMuted, marginTop: 5, textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: '600' },
+  // Stats Grid
+  statsGrid: { flexDirection: 'row', gap: 16, marginBottom: 40 },
+  statBox: { flex: 1, backgroundColor: Theme.surfaceHigh, borderRadius: 16, padding: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(71,70,74,0.1)' },
+  statVal: { fontSize: 24, fontWeight: '800', color: Theme.onSurface, marginBottom: 2 },
+  statLabel: { fontSize: 9, color: Theme.onSurfaceVariant, textTransform: 'uppercase', letterSpacing: 1.5, textAlign: 'center' },
 
-  // Task List
-  taskList: { backgroundColor: Colors.bgCard, borderRadius: 24, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden' },
-  taskRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 18, paddingVertical: 16 },
-  taskRowBorder: { borderBottomWidth: 1, borderBottomColor: Colors.borderSubtle },
-  taskDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.danger },
-  taskName: { flex: 1, fontSize: 14, color: Colors.textPrimary, fontWeight: '500' },
-  taskBadge: { fontSize: 10, color: Colors.danger, fontWeight: '700', letterSpacing: 0.8, backgroundColor: Colors.dangerSubtle, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 },
-
-  // Quote
-  quoteCard: { flexDirection: 'row', gap: 16, backgroundColor: Colors.bgCard, borderRadius: 24, padding: 20, marginBottom: 14, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden' },
-  quoteAccent: { width: 3, borderRadius: 2, backgroundColor: Colors.primary, alignSelf: 'stretch' },
-  quoteContent: { flex: 1 },
-  quoteText: { fontSize: 14, color: Colors.textSecondary, fontStyle: 'italic', lineHeight: 22 },
-  quoteAuthor: { fontSize: 12, color: Colors.textMuted, marginTop: 10, fontWeight: '600' },
-
-  // Boss Card
-  bossCard: { backgroundColor: Colors.bgCard, borderRadius: 24, padding: 22, borderLeftWidth: 4, borderLeftColor: Colors.danger, marginBottom: 20, borderWidth: 1, borderTopColor: Colors.border, borderRightColor: Colors.border, borderBottomColor: Colors.border, overflow: 'hidden' },
-  bossHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
-  bossTag: { fontSize: 11, color: Colors.danger, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 },
-  bossName: { fontSize: 22, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.5 },
-  bossEmoji: { fontSize: 42 },
-  bossStats: { flexDirection: 'row', gap: 20, marginBottom: 16 },
-  hpBarContainer: { flex: 1 },
-  hpLabelRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  hpLabel: { fontSize: 10, color: Colors.textMuted, fontWeight: '700', letterSpacing: 1 },
-  hpValue: { fontSize: 11, color: Colors.textPrimary, fontWeight: '600' },
-  hpBarBg: { height: 10, backgroundColor: Colors.bgHighlight, borderRadius: 5, overflow: 'hidden' },
-  hpBarFill: { height: '100%', borderRadius: 5 },
-  bossReward: { alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bgHighlight, borderRadius: 16, paddingHorizontal: 16, borderStyle: 'dashed', borderWidth: 1, borderColor: Colors.borderActive },
-  rewardXp: { fontSize: 18, fontWeight: '700', color: '#F59E0B' },
-  rewardLabel: { fontSize: 9, color: Colors.textMuted, fontWeight: '700', marginTop: 2, letterSpacing: 0.5 },
-  bossDesc: { fontSize: 13, color: Colors.textSecondary, lineHeight: 20, fontStyle: 'italic' },
+  // Chart
+  analyticsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, paddingHorizontal: 4 },
+  badge: { backgroundColor: 'rgba(192,193,255,0.1)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
+  badgeText: { fontSize: 10, color: Theme.primary, fontWeight: '600' },
+  chartCard: { backgroundColor: Theme.surface, borderRadius: 16, padding: 24, borderWidth: 1, borderColor: 'rgba(71,70,74,0.1)' },
+  chartContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', height: 160, gap: 8 },
+  chartCol: { flex: 1, alignItems: 'center', gap: 12, height: '100%' },
+  chartBarWrapper: { flex: 1, width: '100%', justifyContent: 'flex-end' },
+  chartBar: { width: '100%', borderTopLeftRadius: 6, borderTopRightRadius: 6 },
+  chartDay: { fontSize: 9, color: Theme.onSurfaceVariant },
+  chartDayActive: { color: Theme.primary, fontWeight: '700' },
 });

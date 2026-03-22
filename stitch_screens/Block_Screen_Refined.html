@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>OBSIDIAN - Focus Mode</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;family=Manrope:wght@200;300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-surface-variant": "#c8c6ca",
+              "tertiary-container": "#180044",
+              "on-error-container": "#ffdad6",
+              "on-tertiary-fixed": "#23005c",
+              "on-error": "#690005",
+              "tertiary": "#d0bcff",
+              "on-tertiary-container": "#8d5ff9",
+              "surface": "#131315",
+              "inverse-primary": "#494bd6",
+              "on-tertiary": "#3c0091",
+              "secondary-container": "#444173",
+              "inverse-surface": "#e5e1e4",
+              "on-secondary-container": "#b3afe9",
+              "on-primary-fixed-variant": "#2f2ebe",
+              "on-tertiary-fixed-variant": "#5516be",
+              "tertiary-fixed-dim": "#d0bcff",
+              "error": "#ffb4ab",
+              "surface-container": "#201f21",
+              "surface-container-high": "#2a2a2c",
+              "error-container": "#93000a",
+              "surface-container-highest": "#353437",
+              "surface-tint": "#c0c1ff",
+              "on-secondary-fixed": "#181445",
+              "outline-variant": "#47464a",
+              "surface-dim": "#131315",
+              "on-background": "#e5e1e4",
+              "on-primary-container": "#696df8",
+              "outline": "#919095",
+              "on-primary-fixed": "#07006c",
+              "surface-container-low": "#1b1b1d",
+              "surface-bright": "#39393b",
+              "primary-fixed-dim": "#c0c1ff",
+              "on-primary": "#1000a9",
+              "surface-variant": "#353437",
+              "on-surface": "#e5e1e4",
+              "primary-fixed": "#e1e0ff",
+              "secondary": "#c4c1fb",
+              "secondary-fixed": "#e3dfff",
+              "secondary-fixed-dim": "#c4c1fb",
+              "tertiary-fixed": "#e9ddff",
+              "on-secondary-fixed-variant": "#444173",
+              "primary": "#c0c1ff",
+              "background": "#131315",
+              "inverse-on-surface": "#303032",
+              "on-secondary": "#2d2a5b",
+              "primary-container": "#040051",
+              "surface-container-lowest": "#0e0e10"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+        .glow-radial {
+            background: radial-gradient(circle at center, transparent 0%, rgba(19, 19, 21, 1) 70%),
+                        radial-gradient(circle at 0% 0%, rgba(192, 193, 255, 0.08) 0%, transparent 40%),
+                        radial-gradient(circle at 100% 100%, rgba(105, 109, 248, 0.08) 0%, transparent 40%);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface font-body selection:bg-primary selection:text-primary-container">
+<!-- TopAppBar Navigation Shell -->
+<nav class="fixed top-0 w-full z-50 bg-[#131315]/80 backdrop-blur-xl border-b border-[#47464a]/15 flex items-center justify-between px-6 h-16 w-full">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-[#c0c1ff] cursor-pointer">menu</span>
+<span class="text-xl tracking-[0.2em] font-light text-[#e5e1e4] font-manrope uppercase">OBSIDIAN</span>
+</div>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant/30">
+<img class="w-full h-full object-cover" data-alt="User profile avatar portrait" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDqFfQrJcXc7Ai22z_Bn7ipa9ZBwNkRsV_1EqN0ZtSP1f6ONFTdrAHGgGAgJsLfA7YtSUOKa9qfKokBDwaIIH_r65QSwOHS0EH87NYhE9qC1V8NVbRB_yUM02sYXQ9dhnx3z0zeZPcTJYVNOlcGKQA3AKVZ97qkauQxHLG_rmxb41_NIS5MRKap9AcRWYt-0JvS7Eg57MeGwIUpMoDWHbBJeul3bTIIQY0J_S6PJomt98ZOqxvZt5as7eU_cuRt75Vm6qvYe_syvKU"/>
+</div>
+</nav>
+<!-- Main Canvas -->
+<main class="min-h-screen pt-16 pb-24 flex flex-col items-center justify-center relative overflow-hidden glow-radial px-6">
+<!-- Background Ambient Accents -->
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary-container/10 blur-[120px] rounded-full -z-10"></div>
+<!-- Block Content Container -->
+<div class="w-full max-w-lg flex flex-col items-center text-center space-y-12">
+<!-- Central Visual Anchor -->
+<div class="relative group">
+<div class="absolute inset-0 bg-primary/20 blur-3xl rounded-full scale-150 group-hover:bg-primary/30 transition-all duration-700"></div>
+<div class="relative w-32 h-32 flex items-center justify-center bg-surface-container-highest rounded-2xl border border-outline-variant/20 shadow-2xl">
+<span class="material-symbols-outlined text-6xl text-primary" style="font-variation-settings: 'FILL' 1;">adjust</span>
+</div>
+</div>
+<!-- Headline Section -->
+<div class="space-y-4">
+<h1 class="font-headline text-5xl md:text-6xl font-extrabold tracking-tighter text-on-surface uppercase">
+                    Focus Mode Active
+                </h1>
+<p class="font-body text-on-surface-variant text-lg max-w-md mx-auto leading-relaxed font-light">
+                    The path to excellence is paved with silence. Your current objective requires absolute presence.
+                </p>
+</div>
+<!-- Bento Card: Current Streak -->
+<div class="w-full bg-[#353437]/40 backdrop-blur-2xl border border-outline-variant/15 rounded-xl p-8 flex flex-col items-center gap-6 shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+<div class="flex flex-col items-center">
+<span class="font-label text-on-surface-variant uppercase tracking-[0.2em] text-[10px] mb-2">System Uptime</span>
+<div class="flex items-baseline gap-1">
+<span class="font-headline text-5xl font-bold text-primary">124</span>
+<span class="font-headline text-xl text-on-surface-variant font-medium">MIN</span>
+</div>
+</div>
+<div class="w-full h-[2px] bg-surface-container-lowest rounded-full overflow-hidden">
+<div class="h-full bg-gradient-to-r from-secondary to-primary w-[72%] shadow-[0_0_12px_rgba(192,193,255,0.4)]"></div>
+</div>
+<div class="flex justify-between w-full font-label text-[11px] text-on-surface-variant tracking-wider uppercase">
+<span>Deep Work Session</span>
+<span class="text-primary font-bold">Goal: 180m</span>
+</div>
+</div>
+<!-- Action Area -->
+<div class="flex flex-col gap-6 w-full max-w-xs">
+<button class="w-full py-4 bg-gradient-to-br from-primary to-on-primary-container text-on-primary font-headline font-bold uppercase tracking-widest text-sm rounded-md shadow-lg shadow-primary-container/20 hover:brightness-110 active:scale-[0.98] transition-all">
+                    Continue Focus
+                </button>
+<button class="group flex items-center justify-center gap-2 text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="font-label text-xs uppercase tracking-[0.15em]">Exit System</span>
+<span class="material-symbols-outlined text-lg opacity-60 group-hover:opacity-100 transition-opacity">logout</span>
+</button>
+</div>
+</div>
+<!-- Technical Metadata -->
+<div class="absolute bottom-12 font-label text-[9px] text-outline-variant tracking-[0.4em] uppercase">
+            Protocol v2.0.4 // Priority Alpha // Encryption Active
+        </div>
+</main>
+<!-- BottomNavBar Navigation Shell -->
+<nav class="fixed bottom-0 left-0 w-full z-50 bg-[#1b1b1d]/60 backdrop-blur-2xl border-t border-[#47464a]/10 rounded-t-2xl flex justify-around items-center h-20 px-4 pb-safe w-full shadow-[0_-4px_40px_rgba(4,0,81,0.15)]">
+<div class="flex flex-col items-center justify-center text-[#c8c6ca] p-3 hover:bg-[#2a2a2c] transition-all duration-300 scale-95 active:scale-90 cursor-pointer">
+<span class="material-symbols-outlined">timer</span>
+</div>
+<div class="flex flex-col items-center justify-center text-[#c0c1ff] bg-[#353437]/50 rounded-xl p-3 scale-95 transition-transform cursor-pointer">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">adjust</span>
+</div>
+<div class="flex flex-col items-center justify-center text-[#c8c6ca] p-3 hover:bg-[#2a2a2c] transition-all duration-300 scale-95 active:scale-90 cursor-pointer">
+<span class="material-symbols-outlined">analytics</span>
+</div>
+<div class="flex flex-col items-center justify-center text-[#c8c6ca] p-3 hover:bg-[#2a2a2c] transition-all duration-300 scale-95 active:scale-90 cursor-pointer">
+<span class="material-symbols-outlined">person</span>
+</div>
+</nav>
+</body></html>

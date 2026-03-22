@@ -1,220 +1,262 @@
 import React, { useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, Platform,
+  View, Text, StyleSheet, ScrollView, Platform, TouchableOpacity, Image
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Svg, { Rect } from 'react-native-svg';
-import { Colors } from '../constants/colors';
-import { getStats, getFocusSessions, getSettings, getStreakData } from '../utils/storage';
+import { getStats, getFocusSessions, getSettings, getStreakData, getUserProfile } from '../utils/storage';
 import { ACHIEVEMENTS, getLevelInfo, getProgressToNextLevel } from '../constants/achievements';
-import { formatMinutes, formatHours, getLastNDays, getDayLabel } from '../utils/helpers';
-import { getCategoryById } from '../constants/categories';
+import { formatMinutes, getLastNDays, getDayLabel } from '../utils/helpers';
 
 const { width } = require('react-native').Dimensions.get('window');
-const CHART_WIDTH = width - 48;
+const CHART_WIDTH = width - 88; // Accounting for paddings
 const CHART_HEIGHT = 100;
 
-export default function AnalyticsScreen() {
+// Obsidian Theme tokens
+const Theme = {
+  bg: '#131315',
+  surface: '#1b1b1d',
+  surfaceHigh: '#2a2a2c',
+  surfaceHighest: '#353437',
+  onSurface: '#e5e1e4',
+  onSurfaceVariant: '#c8c6ca',
+  primary: '#c0c1ff',
+  primaryVariant: '#696df8',
+  tertiary: '#d0bcff',
+  secondary: '#c4c1fb',
+  error: '#ffb4ab',
+  border: 'rgba(71, 70, 74, 0.15)',
+};
+
+export default function AnalyticsScreen({ navigation }) {
+  const [profile, setProfile] = useState({});
   const [stats, setStats] = useState(null);
-  const [sessions, setSessions] = useState([]);
-  const [settings, setSettings] = useState(null);
   const [weekData, setWeekData] = useState([]);
-  const [unlockedCount, setUnlockedCount] = useState(0);
+  const [unlockedAchievements, setUnlockedAchievements] = useState([]);
 
   useFocusEffect(
     useCallback(() => { load(); }, [])
   );
 
   const load = async () => {
-    const [s, sess, sett, streakData] = await Promise.all([
-      getStats(), getFocusSessions(), getSettings(), getStreakData(),
+    const [p, s, streakData] = await Promise.all([
+      getUserProfile(), getStats(), getStreakData(),
     ]);
-    setStats(s);
-    setSessions(sess);
-    setSettings(sett);
+    setProfile(p || {});
+    setStats(s || { xp: 0, streak: 0, totalMinutes: 0 });
+    
     const days = getLastNDays(7);
     setWeekData(days.map((d) => ({ key: d, label: getDayLabel(d), minutes: streakData[d] || 0 })));
+    
     const { getUnlockedAchievements } = require('../utils/storage');
     const unlocked = await getUnlockedAchievements();
-    setUnlockedCount(unlocked.length);
+    setUnlockedAchievements(unlocked);
   };
 
   if (!stats) return null;
 
   const levelInfo = getLevelInfo(stats.xp);
-  const levelProgress = getProgressToNextLevel(stats.xp);
-  const goalMinutes = (settings?.dailyGoalHours || 2) * 60;
+  const maxXP = levelInfo.maxXP === Infinity ? stats.xp : levelInfo.maxXP;
+  const levelProgress = levelInfo.maxXP === Infinity ? 1 : Math.min(stats.xp / maxXP, 1);
   const todayKey = new Date().toISOString().split('T')[0];
-  const todayMinutes = weekData.find((d) => d.key === todayKey)?.minutes || 0;
-  const todayProgress = Math.min(todayMinutes / goalMinutes, 1);
   const maxWeekMin = Math.max(...weekData.map((d) => d.minutes), 1);
-  const barW = (CHART_WIDTH - (weekData.length - 1) * 8) / weekData.length;
-  const avgDailyMin = weekData.reduce((s, d) => s + d.minutes, 0) / 7;
-  const recentSessions = sessions.slice(0, 5);
-
-  const StatCard = ({ label, value, accent }) => (
-    <View style={styles.statCard}>
-      <Text style={[styles.statValue, accent && { color: Colors.primary }]}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
-  );
+  const barW = Math.max((CHART_WIDTH - (weekData.length - 1) * 8) / weekData.length, 10);
+  
+  const totalHours = Math.floor(stats.totalMinutes / 60);
 
   return (
-    <LinearGradient colors={Colors.gradientBg} style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Analytics</Text>
-          <Text style={styles.headerSub}>Your focus journey</Text>
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity onPress={() => navigation.openDrawer && navigation.openDrawer()}>
+            <MaterialCommunityIcons name="menu" size={26} color={Theme.primary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>OBSIDIAN</Text>
         </View>
+        <TouchableOpacity style={styles.profileBtn}>
+           <Image source={{ uri: profile?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80' }} style={styles.profileImg} />
+        </TouchableOpacity>
+      </View>
 
-        {/* Level Card */}
-        <View style={styles.levelCard}>
-          <View style={styles.levelHead}>
-            <View>
-              <Text style={styles.levelTag}>LEVEL {levelInfo.level}</Text>
-              <Text style={styles.levelTitle}>{levelInfo.title}</Text>
-            </View>
-            <View style={styles.xpPill}>
-              <Text style={styles.xpText}>{stats.xp} XP</Text>
-            </View>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+        
+        {/* System Status Banner */}
+        <View style={styles.statusSection}>
+          <Text style={styles.statusLabel}>SYSTEM STATUS: EVOLUTIONARY</Text>
+          <Text style={styles.levelText}>Level {levelInfo.level}</Text>
+          <Text style={styles.titleText}>{levelInfo.title}</Text>
+          
+          <View style={styles.hoursRow}>
+            <Text style={styles.hoursValue}>{totalHours.toLocaleString()}</Text>
+            <Text style={styles.hoursLabel}>TOTAL PRODUCTIVE HOURS</Text>
+          </View>
+          
+          <View style={styles.progressRow}>
+            <Text style={styles.progressLabel}>XP PROGRESS</Text>
+            <Text style={styles.progressValue}>{stats.xp.toLocaleString()} | {maxXP.toLocaleString()} XP</Text>
           </View>
           <View style={styles.barBg}>
             <View style={[styles.barFill, { width: `${levelProgress * 100}%` }]} />
           </View>
-          <Text style={styles.barLabel}>
-            {levelInfo.maxXP === Infinity ? 'Max level reached' : `${Math.round(levelProgress * 100)}% to Level ${levelInfo.level + 1}`}
+        </View>
+
+        {/* Active Milestone Card */}
+        <View style={styles.milestoneCard}>
+          <MaterialCommunityIcons name="medal-outline" size={100} color="rgba(255,255,255,0.03)" style={styles.milestoneBgIcon} />
+          <Text style={styles.milestoneTag}>ACTIVE MILESTONE</Text>
+          <Text style={styles.milestoneTitle}>Deep Focus Mastery</Text>
+          <Text style={styles.milestoneDesc}>
+            Maintain your system operation sequence to unlock consecutive cycle achievements and increase protocol efficiency.
           </Text>
+          
+          <View style={styles.streakRow}>
+            <Text style={styles.streakLabel}>Current Streak</Text>
+            <Text style={styles.streakValue}>{stats.streak}d | {Math.max(stats.streak, 7)}d</Text>
+          </View>
+          <View style={styles.streakBarBg}>
+            <View style={[styles.streakBarFill, { width: `${Math.min(stats.streak / Math.max(stats.streak, 7), 1) * 100}%` }]} />
+          </View>
+          
+          <TouchableOpacity style={styles.reqBtn}>
+            <Text style={styles.reqBtnText}>VIEW REQUIREMENTS</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Today's Goal */}
-        <View style={styles.goalCard}>
-          <View style={styles.goalHead}>
-            <Text style={styles.sectionLabel}>TODAY'S GOAL</Text>
-            <Text style={styles.goalVal}>{formatMinutes(todayMinutes)} / {formatMinutes(goalMinutes)}</Text>
+        {/* Weekly Performance */}
+        <View style={styles.weeklyCard}>
+          <View style={styles.weeklyHeader}>
+            <View>
+              <Text style={styles.weeklyTitle}>Weekly Performance</Text>
+              <Text style={styles.weeklyDesc}>Architecture output across{'\n'}focus sessions</Text>
+            </View>
+            <View style={styles.legend}>
+              <View style={styles.legendDot} />
+              <Text style={styles.legendText}>FOCUS{'\n'}QUANTUM</Text>
+            </View>
           </View>
-          <View style={styles.barBg}>
-            <View style={[styles.barFill, { width: `${todayProgress * 100}%`, backgroundColor: Colors.primary }]} />
-          </View>
-          <Text style={styles.barLabel}>{Math.round(todayProgress * 100)}% complete</Text>
-        </View>
-
-        {/* Stats Grid */}
-        <Text style={styles.sectionTitle}>Overview</Text>
-        <View style={styles.statsGrid}>
-          <StatCard label="Streak" value={`${stats.streak}d`} />
-          <StatCard label="Total Time" value={formatHours(stats.totalMinutes)} accent />
-          <StatCard label="Sessions" value={stats.totalSessions} />
-          <StatCard label="Achievements" value={`${unlockedCount}/${ACHIEVEMENTS.length}`} />
-        </View>
-
-        {/* Chart */}
-        <Text style={styles.sectionTitle}>Last 7 Days</Text>
-        <View style={styles.chartCard}>
-          <Svg width={CHART_WIDTH} height={CHART_HEIGHT + 28}>
-            {weekData.map((d, i) => {
-              const barH = Math.max((d.minutes / maxWeekMin) * CHART_HEIGHT, 4);
-              const x = i * (barW + 8);
-              const y = CHART_HEIGHT - barH;
-              return (
-                <Rect
-                  key={d.key} x={x} y={y} width={barW} height={barH} rx={5}
-                  fill={d.key === todayKey ? Colors.primary : Colors.bgHighlight}
-                  opacity={d.minutes > 0 ? 1 : 0.5}
-                />
-              );
-            })}
-          </Svg>
-          <View style={styles.chartLabels}>
-            {weekData.map((d) => (
-              <View key={d.key} style={{ width: barW, alignItems: 'center' }}>
-                <Text style={[styles.chartLabel, d.key === todayKey && { color: Colors.primary }]}>{d.label}</Text>
-                <Text style={styles.chartMin}>{d.minutes > 0 ? formatMinutes(d.minutes) : '–'}</Text>
-              </View>
-            ))}
-          </View>
-          <View style={styles.chartFooter}>
-            <Text style={styles.chartAvg}>7-day avg · {formatMinutes(Math.round(avgDailyMin))}</Text>
-          </View>
-        </View>
-
-        {/* Recent Sessions */}
-        {recentSessions.length > 0 && (
-          <>
-            <Text style={styles.sectionTitle}>Recent Sessions</Text>
-            <View style={styles.sessionList}>
-              {recentSessions.map((s, idx) => {
-                const date = new Date(s.timestamp);
-                const modeLabel = s.mode === 'pomodoro' ? 'Focus' : s.mode === 'short_break' ? 'Short Break' : s.mode === 'long_break' ? 'Long Break' : 'Custom';
+          
+          <View style={styles.chartContainer}>
+            <Svg width={CHART_WIDTH} height={CHART_HEIGHT}>
+              {weekData.map((d, i) => {
+                const barH = Math.max((d.minutes / maxWeekMin) * CHART_HEIGHT, 4);
+                const x = i * (barW + 8);
+                const y = CHART_HEIGHT - barH;
+                const isToday = d.key === todayKey;
                 return (
-                  <View key={s.id} style={[styles.sessionRow, idx < recentSessions.length - 1 && styles.sessionRowBorder]}>
-                    <View style={styles.sessionLeft}>
-                      <View style={styles.sessionMainInfo}>
-                        <View style={[styles.catPill, { backgroundColor: getCategoryById(s.category).color + '20' }]}>
-                          <Text style={styles.catIcon}>{getCategoryById(s.category).icon}</Text>
-                        </View>
-                        <View>
-                          <Text style={styles.sessionMode}>{modeLabel}</Text>
-                          <Text style={styles.sessionDate}>
-                            {date.toLocaleDateString()} · {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </Text>
-                        </View>
-                      </View>
-                      {s.note && <Text style={styles.sessionNote}>"{s.note}"</Text>}
-                    </View>
-                    <Text style={styles.sessionDur}>{formatMinutes(s.durationMinutes)}</Text>
-                  </View>
+                  <Rect
+                    key={d.key} x={x} y={y} width={barW} height={barH} rx={4}
+                    fill={isToday ? Theme.primary : Theme.surfaceHigh}
+                    opacity={1}
+                  />
                 );
               })}
+            </Svg>
+            <View style={styles.chartLabels}>
+              {weekData.map((d) => (
+                <View key={d.key} style={{ width: barW }}>
+                  <Text style={[styles.chartDay, d.key === todayKey && { color: Theme.onSurface }]}>
+                    {d.label.slice(0, 3)}
+                  </Text>
+                </View>
+              ))}
             </View>
-          </>
-        )}
+          </View>
+        </View>
 
-        <View style={{ height: 110 }} />
+        {/* Achievement Gallery */}
+        <View style={styles.galleryHeader}>
+          <Text style={styles.galleryTitle}>ACHIEVEMENT{'\n'}GALLERY</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Achievements')}>
+            <Text style={styles.viewAllText}>View All{'\n'}Artifacts</Text>
+          </TouchableOpacity>
+        </View>
+        
+        <View style={styles.achievementsGrid}>
+          {ACHIEVEMENTS.slice(0, 4).map((ach) => {
+            const isUnlocked = unlockedAchievements.includes(ach.id);
+            return (
+              <View key={ach.id} style={styles.achCard}>
+                <View style={[styles.achIconWrap, !isUnlocked && styles.achIconLocked]}>
+                  <MaterialCommunityIcons name={ach.icon} size={28} color={isUnlocked ? Theme.primary : Theme.onSurfaceVariant} />
+                </View>
+                <Text style={[styles.achTitle, !isUnlocked && { color: Theme.onSurfaceVariant }]} numberOfLines={2} textAlign="center">
+                  {ach.title}
+                </Text>
+                <Text style={styles.achStatus}>
+                  {isUnlocked ? 'UNLOCKED' : 'LOCKED'}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+
+        <View style={{ height: 120 }} />
       </ScrollView>
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  scroll: { paddingHorizontal: 24, paddingTop: Platform.OS === 'ios' ? 64 : 48 },
-  header: { marginBottom: 28 },
-  headerTitle: { fontSize: 32, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -1 },
-  headerSub: { fontSize: 14, color: Colors.textMuted, marginTop: 6, fontWeight: '500' },
-  sectionLabel: { fontSize: 11, color: Colors.textMuted, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase' },
-  sectionTitle: { fontSize: 13, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 14 },
-  levelCard: { backgroundColor: Colors.bgCard, borderRadius: 24, padding: 22, marginBottom: 16, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden' },
-  levelHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
-  levelTag: { fontSize: 11, color: Colors.primary, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 6 },
-  levelTitle: { fontSize: 24, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.5 },
-  xpPill: { backgroundColor: Colors.primarySubtle, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: Colors.borderActive },
-  xpText: { color: Colors.primary, fontWeight: '700', fontSize: 15 },
-  barBg: { height: 4, backgroundColor: Colors.bgHighlight, borderRadius: 2, overflow: 'hidden', marginBottom: 10 },
-  barFill: { height: '100%', backgroundColor: Colors.primary, borderRadius: 2 },
-  barLabel: { color: Colors.textMuted, fontSize: 12, fontWeight: '500' },
-  goalCard: { backgroundColor: Colors.bgCard, borderRadius: 24, padding: 22, marginBottom: 28, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden' },
-  goalHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  goalVal: { color: Colors.textPrimary, fontSize: 16, fontWeight: '700' },
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 28 },
-  statCard: { flex: 1, minWidth: '44%', backgroundColor: Colors.bgCard, borderRadius: 24, padding: 20, borderWidth: 1, borderColor: Colors.border, alignItems: 'center' },
-  statValue: { fontSize: 28, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.5, marginBottom: 8 },
-  statLabel: { fontSize: 11, color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 1, fontWeight: '700' },
-  chartCard: { backgroundColor: Colors.bgCard, borderRadius: 24, padding: 20, marginBottom: 28, borderWidth: 1, borderColor: Colors.border, overflow: 'hidden' },
-  chartLabels: { flexDirection: 'row', gap: 8, marginTop: 10 },
-  chartLabel: { fontSize: 11, color: Colors.textMuted, fontWeight: '700' },
-  chartMin: { fontSize: 10, color: Colors.textMuted, marginTop: 3 },
-  chartFooter: { marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderColor: Colors.borderSubtle },
-  chartAvg: { fontSize: 12, color: Colors.textMuted, fontWeight: '600' },
-  sessionList: { backgroundColor: Colors.bgCard, borderRadius: 24, borderWidth: 1, borderColor: Colors.border, marginBottom: 12, overflow: 'hidden' },
-  sessionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: 18, paddingVertical: 16 },
-  sessionRowBorder: { borderBottomWidth: 1, borderBottomColor: Colors.borderSubtle },
-  sessionLeft: { flex: 1, marginRight: 16 },
-  sessionMainInfo: { flexDirection: 'row', gap: 12, alignItems: 'center', marginBottom: 8 },
-  catPill: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  catIcon: { fontSize: 16 },
-  sessionMode: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary, textTransform: 'uppercase', letterSpacing: 0.5 },
-  sessionDate: { fontSize: 12, color: Colors.textMuted, fontWeight: '500', marginTop: 2 },
-  sessionNote: { fontSize: 13, color: Colors.textSecondary, fontStyle: 'italic', backgroundColor: Colors.bgHighlight, padding: 10, borderRadius: 12, marginTop: 4 },
-  sessionDur: { fontSize: 16, fontWeight: '700', color: Colors.primary },
+  container: { flex: 1, backgroundColor: Theme.bg },
+  
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 16, backgroundColor: 'rgba(19, 19, 21, 0.8)', zIndex: 10, borderBottomWidth: 1, borderBottomColor: Theme.border },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  headerTitle: { fontSize: 20, color: Theme.onSurface, fontWeight: '300', letterSpacing: 4 },
+  profileBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: Theme.surfaceHighest, borderWidth: 1, borderColor: 'rgba(71,70,74,0.3)', overflow: 'hidden' },
+  profileImg: { width: '100%', height: '100%' },
+
+  scroll: { paddingHorizontal: 24, paddingTop: 32 },
+
+  statusSection: { marginBottom: 36 },
+  statusLabel: { fontSize: 9, color: Theme.onSurfaceVariant, fontWeight: '700', letterSpacing: 1.5, marginBottom: 8 },
+  levelText: { fontSize: 32, color: Theme.onSurface, fontWeight: '300', fontStyle: 'italic', letterSpacing: -1, marginBottom: -4 },
+  titleText: { fontSize: 36, color: Theme.onSurface, fontWeight: '800', fontStyle: 'italic', letterSpacing: -1, marginBottom: 16 },
+  
+  hoursRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginBottom: 28 },
+  hoursValue: { fontSize: 28, color: Theme.primary, fontWeight: '300', lineHeight: 32 },
+  hoursLabel: { fontSize: 10, color: Theme.onSurfaceVariant, fontWeight: '700', letterSpacing: 1, paddingBottom: 6 },
+  
+  progressRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  progressLabel: { fontSize: 9, color: Theme.onSurfaceVariant, fontWeight: '700', letterSpacing: 1 },
+  progressValue: { fontSize: 10, color: Theme.primary, fontWeight: '700' },
+  barBg: { height: 6, backgroundColor: Theme.surfaceHigh, borderRadius: 3, overflow: 'hidden' },
+  barFill: { height: '100%', backgroundColor: Theme.primaryVariant, borderRadius: 3 },
+
+  milestoneCard: { backgroundColor: Theme.surface, borderRadius: 16, padding: 24, borderWidth: 1, borderColor: Theme.border, marginBottom: 24, position: 'relative', overflow: 'hidden' },
+  milestoneBgIcon: { position: 'absolute', top: 20, right: -20 },
+  milestoneTag: { fontSize: 9, color: Theme.onSurfaceVariant, fontWeight: '700', letterSpacing: 1.5, marginBottom: 8 },
+  milestoneTitle: { fontSize: 20, color: Theme.onSurface, fontWeight: '600', marginBottom: 8 },
+  milestoneDesc: { fontSize: 12, color: Theme.onSurfaceVariant, lineHeight: 18, marginBottom: 24, paddingRight: 40 },
+  streakRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  streakLabel: { fontSize: 10, color: Theme.onSurface, fontWeight: '500' },
+  streakValue: { fontSize: 10, color: Theme.onSurface, fontWeight: '700' },
+  streakBarBg: { height: 4, backgroundColor: Theme.surfaceHigh, borderRadius: 2, overflow: 'hidden', marginBottom: 20 },
+  streakBarFill: { height: '100%', backgroundColor: Theme.onSurface, borderRadius: 2 },
+  reqBtn: { backgroundColor: Theme.surfaceHigh, paddingVertical: 14, borderRadius: 8, alignItems: 'center', borderWidth: 1, borderColor: Theme.border },
+  reqBtnText: { color: Theme.onSurface, fontSize: 10, fontWeight: '700', letterSpacing: 1 },
+
+  weeklyCard: { backgroundColor: Theme.surface, borderRadius: 16, padding: 24, borderWidth: 1, borderColor: Theme.border, marginBottom: 36 },
+  weeklyHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 },
+  weeklyTitle: { fontSize: 18, color: Theme.onSurface, fontWeight: '600', marginBottom: 4 },
+  weeklyDesc: { fontSize: 11, color: Theme.onSurfaceVariant, lineHeight: 16 },
+  legend: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Theme.primary },
+  legendText: { fontSize: 8, color: Theme.onSurfaceVariant, fontWeight: '600', letterSpacing: 1 },
+  
+  chartContainer: { alignItems: 'center' },
+  chartLabels: { flexDirection: 'row', gap: 8, marginTop: 16, width: CHART_WIDTH },
+  chartDay: { fontSize: 9, color: Theme.onSurfaceVariant, fontWeight: '600', letterSpacing: 1, textAlign: 'center', textTransform: 'uppercase' },
+
+  galleryHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
+  galleryTitle: { fontSize: 14, color: Theme.onSurface, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase', lineHeight: 18 },
+  viewAllText: { fontSize: 10, color: Theme.onSurfaceVariant, fontWeight: '600', textDecorationLine: 'underline', textAlign: 'right', lineHeight: 14 },
+  
+  achievementsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 16 },
+  achCard: { width: '47%', backgroundColor: Theme.surface, borderRadius: 16, padding: 20, borderWidth: 1, borderColor: Theme.border, alignItems: 'center', marginBottom: 16 },
+  achIconWrap: { width: 56, height: 56, borderRadius: 16, backgroundColor: Theme.surfaceHigh, alignItems: 'center', justifyContent: 'center', marginBottom: 16, shadowColor: Theme.primary, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 5 },
+  achIconLocked: { backgroundColor: Theme.bg, shadowOpacity: 0 },
+  achTitle: { fontSize: 13, color: Theme.onSurface, fontWeight: '600', textAlign: 'center', marginBottom: 8, height: 36 },
+  achStatus: { fontSize: 8, color: Theme.onSurfaceVariant, fontWeight: '700', letterSpacing: 1 },
 });

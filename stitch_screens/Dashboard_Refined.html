@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>FocusForge Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&amp;family=Inter:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-surface-variant": "#c8c6ca",
+                        "tertiary-container": "#180044",
+                        "on-error-container": "#ffdad6",
+                        "on-tertiary-fixed": "#23005c",
+                        "on-error": "#690005",
+                        "tertiary": "#d0bcff",
+                        "on-tertiary-container": "#8d5ff9",
+                        "surface": "#131315",
+                        "inverse-primary": "#494bd6",
+                        "on-tertiary": "#3c0091",
+                        "secondary-container": "#444173",
+                        "inverse-surface": "#e5e1e4",
+                        "on-secondary-container": "#b3afe9",
+                        "on-primary-fixed-variant": "#2f2ebe",
+                        "on-tertiary-fixed-variant": "#5516be",
+                        "tertiary-fixed-dim": "#d0bcff",
+                        "error": "#ffb4ab",
+                        "surface-container": "#201f21",
+                        "surface-container-high": "#2a2a2c",
+                        "error-container": "#93000a",
+                        "surface-container-highest": "#353437",
+                        "surface-tint": "#c0c1ff",
+                        "on-secondary-fixed": "#181445",
+                        "outline-variant": "#47464a",
+                        "surface-dim": "#131315",
+                        "on-background": "#e5e1e4",
+                        "on-primary-container": "#696df8",
+                        "outline": "#919095",
+                        "on-primary-fixed": "#07006c",
+                        "surface-container-low": "#1b1b1d",
+                        "surface-bright": "#39393b",
+                        "primary-fixed-dim": "#c0c1ff",
+                        "on-primary": "#1000a9",
+                        "surface-variant": "#353437",
+                        "on-surface": "#e5e1e4",
+                        "primary-fixed": "#e1e0ff",
+                        "secondary": "#c4c1fb",
+                        "secondary-fixed": "#e3dfff",
+                        "secondary-fixed-dim": "#c4c1fb",
+                        "tertiary-fixed": "#e9ddff",
+                        "on-secondary-fixed-variant": "#444173",
+                        "primary": "#c0c1ff",
+                        "background": "#131315",
+                        "inverse-on-surface": "#303032",
+                        "on-secondary": "#2d2a5b",
+                        "primary-container": "#040051",
+                        "surface-container-lowest": "#0e0e10"
+                    },
+                    fontFamily: {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" },
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .bg-mesh {
+            background: radial-gradient(at 0% 0%, rgba(4, 0, 81, 0.15) 0px, transparent 50%),
+                        radial-gradient(at 100% 0%, rgba(105, 109, 248, 0.05) 0px, transparent 50%);
+        }
+        .glass-card {
+            background: rgba(42, 42, 44, 0.6);
+            backdrop-filter: blur(24px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body min-h-screen selection:bg-primary selection:text-on-primary overflow-x-hidden bg-mesh">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-[#131315]/80 backdrop-blur-xl border-b border-[#47464a]/15 flex items-center justify-between px-6 h-16">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-[#c0c1ff]">menu</span>
+<h1 class="text-xl tracking-[0.2em] font-light text-[#e5e1e4] font-headline uppercase">OBSIDIAN</h1>
+</div>
+<div class="h-8 w-8 rounded-full overflow-hidden bg-surface-container-highest border border-outline-variant/30">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="Portrait of a modern professional user" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD3W5JNYjaCWrTwbj7owzZ187azd2IOKywtqSKZMVwmPs7wcx9TS0DZiFN3ROkXfOx2NyTwZfx4NSh1hg7tWRnyUtfP1iV5byOhZNREtM-fDNgSCJedLClWkW-KrF_n50jzKcUbKDoqh_kRxgJ_UVz7xtD6p6MPEwAoZCLTiEmrhEnwDUs0Kiwa4143OdUe7Xtxmf5_IJGVGgNN63tuMfYb--Kt-TNg1ADhndndgLIX-cZlecaxvyw5Y7OTDjWSTU0SxLHrc9jHhnE"/>
+</div>
+</header>
+<main class="pt-24 pb-32 px-6 max-w-2xl mx-auto space-y-10">
+<!-- Today's Focus Section -->
+<section class="text-center space-y-2">
+<span class="font-label text-on-surface-variant text-[10px] uppercase tracking-[0.2em]">Today's Focus Time</span>
+<div class="font-headline font-extrabold text-6xl tracking-tighter text-on-surface">
+                6<span class="text-primary-fixed-dim">h</span> 42<span class="text-primary-fixed-dim">m</span>
+</div>
+<div class="flex justify-center items-center gap-2 pt-2">
+<div class="h-1.5 w-32 bg-surface-container-lowest rounded-full overflow-hidden relative">
+<div class="absolute inset-0 bg-gradient-to-r from-secondary to-primary w-3/4 rounded-full shadow-[0_0_8px_rgba(192,193,255,0.4)]"></div>
+</div>
+<span class="font-label text-[10px] text-primary/80 font-medium">75% OF GOAL</span>
+</div>
+</section>
+<!-- Primary CTA -->
+<section>
+<button class="w-full group relative overflow-hidden bg-gradient-to-br from-primary to-on-primary-container p-[1px] rounded-xl shadow-[0_20px_40px_rgba(4,0,81,0.25)] transition-transform active:scale-[0.98]">
+<div class="bg-surface-container-high group-hover:bg-transparent transition-colors duration-500 rounded-[11px] py-6 flex flex-col items-center justify-center gap-1">
+<span class="material-symbols-outlined text-primary group-hover:text-on-primary transition-colors mb-2" style="font-variation-settings: 'FILL' 1; font-size: 32px;">bolt</span>
+<span class="font-headline font-bold text-lg tracking-tight group-hover:text-on-primary transition-colors">Forge Focus</span>
+<span class="font-label text-[10px] opacity-60 uppercase tracking-widest group-hover:text-on-primary/80 transition-colors">Initialize Deep Work Session</span>
+</div>
+</button>
+</section>
+<!-- Active Project Card -->
+<section class="space-y-4">
+<h2 class="font-label text-on-surface-variant text-[10px] uppercase tracking-[0.2em] px-1">Active Project</h2>
+<div class="glass-card rounded-2xl p-6 border border-outline-variant/10 shadow-xl relative overflow-hidden">
+<div class="absolute top-0 right-0 p-4">
+<span class="material-symbols-outlined text-primary/40">more_vert</span>
+</div>
+<div class="flex items-start gap-5">
+<div class="h-14 w-14 rounded-xl bg-surface-container-highest flex items-center justify-center border border-outline-variant/20 shadow-inner">
+<span class="material-symbols-outlined text-tertiary" style="font-variation-settings: 'FILL' 1;">architecture</span>
+</div>
+<div class="flex-1">
+<h3 class="font-headline font-bold text-xl tracking-tight text-on-surface">Neural Interface Design</h3>
+<p class="text-sm text-on-surface-variant mt-1 leading-relaxed">System architecture and high-fidelity wireframing phase.</p>
+<div class="mt-6 space-y-3">
+<div class="flex justify-between items-end">
+<span class="font-label text-[10px] text-on-surface-variant uppercase tracking-wider">XP PROGRESS</span>
+<span class="font-headline font-bold text-xs text-primary">1,240 / 2,000 XP</span>
+</div>
+<!-- Enhanced Progress Bar -->
+<div class="h-2 w-full bg-surface-container-lowest rounded-full overflow-hidden border border-outline-variant/5">
+<div class="h-full bg-gradient-to-r from-tertiary to-primary w-[62%] relative">
+<div class="absolute inset-y-0 right-0 w-4 bg-white/20 blur-sm"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Stats Grid -->
+<section class="grid grid-cols-2 gap-4">
+<div class="surface-container-high rounded-2xl p-5 border border-outline-variant/10 flex flex-col items-center justify-center gap-2">
+<span class="material-symbols-outlined text-error/80" style="font-variation-settings: 'FILL' 1;">local_fire_department</span>
+<span class="font-headline font-extrabold text-2xl">14</span>
+<span class="font-label text-[9px] uppercase tracking-widest text-on-surface-variant">Day Streak</span>
+</div>
+<div class="surface-container-high rounded-2xl p-5 border border-outline-variant/10 flex flex-col items-center justify-center gap-2">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">stars</span>
+<span class="font-headline font-extrabold text-2xl">LVL 24</span>
+<span class="font-label text-[9px] uppercase tracking-widest text-on-surface-variant">Digital Architect</span>
+</div>
+</section>
+<!-- Bar Chart Section -->
+<section class="space-y-4">
+<div class="flex justify-between items-center px-1">
+<h2 class="font-label text-on-surface-variant text-[10px] uppercase tracking-[0.2em]">Focus Analytics</h2>
+<span class="font-label text-[10px] text-primary bg-primary/10 px-2 py-0.5 rounded-full">+12% vs LW</span>
+</div>
+<div class="surface-container rounded-2xl p-6 border border-outline-variant/10">
+<div class="flex items-end justify-between h-40 gap-2">
+<!-- Monday -->
+<div class="flex-1 flex flex-col items-center gap-3">
+<div class="w-full bg-surface-container-highest rounded-t-lg h-[40%] group-hover:bg-primary/20 transition-colors"></div>
+<span class="font-label text-[9px] text-on-surface-variant">M</span>
+</div>
+<!-- Tuesday -->
+<div class="flex-1 flex flex-col items-center gap-3">
+<div class="w-full bg-surface-container-highest rounded-t-lg h-[65%]"></div>
+<span class="font-label text-[9px] text-on-surface-variant">T</span>
+</div>
+<!-- Wednesday -->
+<div class="flex-1 flex flex-col items-center gap-3">
+<div class="w-full bg-surface-container-highest rounded-t-lg h-[55%]"></div>
+<span class="font-label text-[9px] text-on-surface-variant">W</span>
+</div>
+<!-- Thursday -->
+<div class="flex-1 flex flex-col items-center gap-3">
+<div class="w-full bg-gradient-to-t from-primary/40 to-primary rounded-t-lg h-[85%] shadow-[0_0_15px_rgba(192,193,255,0.2)]"></div>
+<span class="font-label text-[9px] text-primary font-bold">T</span>
+</div>
+<!-- Friday -->
+<div class="flex-1 flex flex-col items-center gap-3">
+<div class="w-full bg-surface-container-highest rounded-t-lg h-[70%]"></div>
+<span class="font-label text-[9px] text-on-surface-variant">F</span>
+</div>
+<!-- Saturday -->
+<div class="flex-1 flex flex-col items-center gap-3">
+<div class="w-full bg-surface-container-highest rounded-t-lg h-[30%]"></div>
+<span class="font-label text-[9px] text-on-surface-variant">S</span>
+</div>
+<!-- Sunday -->
+<div class="flex-1 flex flex-col items-center gap-3">
+<div class="w-full bg-surface-container-highest rounded-t-lg h-[25%]"></div>
+<span class="font-label text-[9px] text-on-surface-variant">S</span>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 rounded-t-2xl bg-[#1b1b1d]/60 backdrop-blur-2xl border-t border-[#47464a]/10 shadow-[0_-4px_40px_rgba(4,0,81,0.15)] flex justify-around items-center h-20 px-4 pb-safe">
+<a class="flex flex-col items-center justify-center text-[#c0c1ff] bg-[#353437]/50 rounded-xl p-3 scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">timer</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#c8c6ca] p-3 hover:bg-[#2a2a2c] transition-all duration-300" href="#">
+<span class="material-symbols-outlined">adjust</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#c8c6ca] p-3 hover:bg-[#2a2a2c] transition-all duration-300" href="#">
+<span class="material-symbols-outlined">analytics</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#c8c6ca] p-3 hover:bg-[#2a2a2c] transition-all duration-300" href="#">
+<span class="material-symbols-outlined">person</span>
+</a>
+</nav>
+</body></html>

@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>OBSIDIAN | Control Panel</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;family=Manrope:wght@300;400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-surface-variant": "#c8c6ca",
+                        "tertiary-container": "#180044",
+                        "on-error-container": "#ffdad6",
+                        "on-tertiary-fixed": "#23005c",
+                        "on-error": "#690005",
+                        "tertiary": "#d0bcff",
+                        "on-tertiary-container": "#8d5ff9",
+                        "surface": "#131315",
+                        "inverse-primary": "#494bd6",
+                        "on-tertiary": "#3c0091",
+                        "secondary-container": "#444173",
+                        "inverse-surface": "#e5e1e4",
+                        "on-secondary-container": "#b3afe9",
+                        "on-primary-fixed-variant": "#2f2ebe",
+                        "on-tertiary-fixed-variant": "#5516be",
+                        "tertiary-fixed-dim": "#d0bcff",
+                        "error": "#ffb4ab",
+                        "surface-container": "#201f21",
+                        "surface-container-high": "#2a2a2c",
+                        "error-container": "#93000a",
+                        "surface-container-highest": "#353437",
+                        "surface-tint": "#c0c1ff",
+                        "on-secondary-fixed": "#181445",
+                        "outline-variant": "#47464a",
+                        "surface-dim": "#131315",
+                        "on-background": "#e5e1e4",
+                        "on-primary-container": "#696df8",
+                        "outline": "#919095",
+                        "on-primary-fixed": "#07006c",
+                        "surface-container-low": "#1b1b1d",
+                        "surface-bright": "#39393b",
+                        "primary-fixed-dim": "#c0c1ff",
+                        "on-primary": "#1000a9",
+                        "surface-variant": "#353437",
+                        "on-surface": "#e5e1e4",
+                        "primary-fixed": "#e1e0ff",
+                        "secondary": "#c4c1fb",
+                        "secondary-fixed": "#e3dfff",
+                        "secondary-fixed-dim": "#c4c1fb",
+                        "tertiary-fixed": "#e9ddff",
+                        "on-secondary-fixed-variant": "#444173",
+                        "primary": "#c0c1ff",
+                        "background": "#131315",
+                        "inverse-on-surface": "#303032",
+                        "on-secondary": "#2d2a5b",
+                        "primary-container": "#040051",
+                        "surface-container-lowest": "#0e0e10"
+                    },
+                    fontFamily: {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" },
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(42, 42, 44, 0.6);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+        }
+        .cta-gradient {
+            background: linear-gradient(135deg, #c0c1ff 0%, #696df8 100%);
+        }
+        body {
+            background-color: #131315;
+            color: #e5e1e4;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-body selection:bg-primary/30">
+<!-- TopAppBar Shell -->
+<header class="fixed top-0 w-full z-50 bg-[#131315]/80 backdrop-blur-xl border-b border-[#47464a]/15 flex items-center justify-between px-6 h-16">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-[#c0c1ff] cursor-pointer">menu</span>
+<h1 class="text-xl tracking-[0.2em] font-light text-[#e5e1e4] font-headline uppercase">OBSIDIAN</h1>
+</div>
+<div class="flex items-center gap-4">
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant/30">
+<img class="w-full h-full object-cover" data-alt="User profile avatar of a professional architect" src="https://lh3.googleusercontent.com/aida-public/AB6AXuApn-7yOWoZHXw3ghFLQU92rLL22rbYcd2-X9xIa8AhvfvLWhU4q97x1DVReKUie8jDNqwhxcCOH5-TqgtXR1NpTFfSVOPjbCVb76V8oUKWu1Ixna9FQrE-F2zNfMA9ooC27_mMbDeZEQ07Jy1KVutw_61CFHe4lf5qD9DT9CIZWgOSExaVArUfCeSt22IEiuFwdQm6KZcznF0uZZ_wUEJUA-pf1SMJ-R0_FooZ6KpT4P6Zq0qlq_Ykt-3IyRtIa4kwFeSyCOU0HtM"/>
+</div>
+</div>
+</header>
+<main class="pt-24 pb-32 px-6 max-w-5xl mx-auto space-y-12">
+<!-- Header Section -->
+<section class="space-y-2">
+<h2 class="text-[3.5rem] leading-none font-headline font-extrabold tracking-tighter text-on-surface">Settings</h2>
+<p class="text-on-surface-variant font-label tracking-widest uppercase text-xs">System Configuration &amp; User Protocol</p>
+</section>
+<!-- Profile/Membership Bento Grid -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+<!-- Profile Card -->
+<div class="md:col-span-7 glass-panel rounded-xl p-8 border border-outline-variant/10 flex flex-col justify-between min-h-[280px]">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-6">
+<div class="relative">
+<img class="w-24 h-24 rounded-xl object-cover border border-outline-variant/20" data-alt="Portrait of a modern user in dark studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDwFrcxe3uaF_nQE4xLH3rFYThl2whtuYkzQzuedNFOW7yqEjhJZn_5N_GrQ81SgP6GW0O7iQ0ERCxfrOr9VlOS5f0q9L7wIDFyQBz6DXa7yMvO40lTgwpFAENhX4Vi02Qcec3fzS585yPcCKI1bzZlYvSrLHWWp6fuu4tWsfWQ_7QKmltr9Eg5YN22XTXHW6hAypyvQ5kv5paIslrGQbapk31i4M-OkwN0L2FV24KptLF3oRmvH5_hWGy0GUEgF2zmjQAsuk-2Kiw"/>
+<div class="absolute -bottom-2 -right-2 bg-primary text-on-primary text-[10px] font-bold px-2 py-1 rounded tracking-tighter uppercase">Verified</div>
+</div>
+<div>
+<h3 class="text-2xl font-headline font-bold text-on-surface">Julian Thorne</h3>
+<p class="text-on-surface-variant font-label text-sm">Protocol ID: 8842-AX-09</p>
+<div class="mt-4 flex gap-2">
+<span class="px-3 py-1 bg-surface-container-highest rounded-full text-[10px] uppercase tracking-widest text-primary border border-primary/20">Executive Tier</span>
+<span class="px-3 py-1 bg-surface-container-highest rounded-full text-[10px] uppercase tracking-widest text-secondary border border-secondary/20">Priority Access</span>
+</div>
+</div>
+</div>
+</div>
+<div class="mt-auto pt-8 border-t border-outline-variant/10 flex justify-between items-center">
+<div class="space-y-1">
+<p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-label">Active Since</p>
+<p class="text-sm font-medium">November 2023</p>
+</div>
+<button class="px-6 py-2 border border-outline-variant/30 rounded text-sm hover:bg-surface-container-highest transition-colors font-medium">Edit Profile</button>
+</div>
+</div>
+<!-- Membership Status Card -->
+<div class="md:col-span-5 surface-container-high rounded-xl p-8 flex flex-col justify-between border border-outline-variant/5">
+<div class="space-y-4">
+<div class="flex items-center gap-2 text-primary">
+<span class="material-symbols-outlined text-lg">workspace_premium</span>
+<span class="font-label text-xs uppercase tracking-[0.2em] font-semibold">Membership Status</span>
+</div>
+<div>
+<h4 class="text-3xl font-headline font-bold text-on-surface tracking-tight">Obsidian Pro</h4>
+<p class="text-on-surface-variant text-sm mt-1">Automatic renewal on <span class="text-on-surface">Oct 12, 2024</span></p>
+</div>
+</div>
+<div class="space-y-4 mt-8">
+<div class="w-full bg-surface-container-lowest h-1.5 rounded-full overflow-hidden">
+<div class="cta-gradient h-full w-[85%]"></div>
+</div>
+<p class="text-[10px] text-on-surface-variant font-label text-right">85% Usage This Cycle</p>
+<button class="w-full py-4 cta-gradient text-on-primary font-headline font-bold uppercase tracking-widest text-xs rounded hover:opacity-90 transition-opacity">Manage Plan</button>
+</div>
+</div>
+</div>
+<!-- Settings Content: Two Column Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+<!-- Left Column: Atmosphere & Intensity -->
+<div class="space-y-12">
+<!-- Atmospheric Engine -->
+<section class="space-y-6">
+<div class="flex items-center justify-between border-b border-outline-variant/15 pb-4">
+<h3 class="text-xl font-headline font-bold text-on-surface tracking-tight">Atmospheric Engine</h3>
+<span class="material-symbols-outlined text-on-surface-variant/50">auto_awesome</span>
+</div>
+<div class="space-y-4">
+<!-- Toggle Item -->
+<div class="flex items-center justify-between p-4 bg-surface-container/40 rounded-xl hover:bg-surface-container-high/60 transition-colors cursor-pointer group">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-tertiary">blur_on</span>
+<div class="space-y-0.5">
+<p class="font-medium text-on-surface">Dynamic Bloom</p>
+<p class="text-xs text-on-surface-variant">Enhanced light diffusion in high-contrast zones</p>
+</div>
+</div>
+<div class="w-10 h-5 bg-surface-container-highest rounded-full relative p-0.5">
+<div class="w-4 h-4 bg-tertiary rounded-sm shadow-sm translate-x-5 transition-transform"></div>
+</div>
+</div>
+<!-- Toggle Item -->
+<div class="flex items-center justify-between p-4 bg-surface-container/40 rounded-xl hover:bg-surface-container-high/60 transition-colors cursor-pointer group">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface-variant">grain</span>
+<div class="space-y-0.5">
+<p class="font-medium text-on-surface">Kinetic Texture</p>
+<p class="text-xs text-on-surface-variant">Micro-movements in static surfaces</p>
+</div>
+</div>
+<div class="w-10 h-5 bg-surface-container-highest rounded-full relative p-0.5">
+<div class="w-4 h-4 bg-outline-variant rounded-sm shadow-sm transition-transform"></div>
+</div>
+</div>
+<!-- Range Item -->
+<div class="p-4 bg-surface-container/40 rounded-xl space-y-4">
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-secondary">palette</span>
+<p class="font-medium text-on-surface">Tonal Saturation</p>
+</div>
+<span class="text-xs font-label text-on-surface-variant">64%</span>
+</div>
+<input class="w-full h-1 bg-surface-container-lowest appearance-none rounded-full accent-secondary" type="range"/>
+</div>
+</div>
+</section>
+<!-- Temporal Intensity -->
+<section class="space-y-6">
+<div class="flex items-center justify-between border-b border-outline-variant/15 pb-4">
+<h3 class="text-xl font-headline font-bold text-on-surface tracking-tight">Temporal Intensity</h3>
+<span class="material-symbols-outlined text-on-surface-variant/50">speed</span>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="p-6 bg-surface-container/40 rounded-xl border border-primary/5 hover:border-primary/20 transition-colors group cursor-pointer">
+<p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-label mb-2">Drift Speed</p>
+<p class="text-2xl font-headline font-bold group-hover:text-primary transition-colors">0.12<span class="text-xs font-normal opacity-40 ml-1">ms</span></p>
+</div>
+<div class="p-6 bg-surface-container/40 rounded-xl border border-secondary/5 hover:border-secondary/20 transition-colors group cursor-pointer">
+<p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-label mb-2">Sync Depth</p>
+<p class="text-2xl font-headline font-bold group-hover:text-secondary transition-colors">Ultra</p>
+</div>
+</div>
+</section>
+</div>
+<!-- Right Column: Blocked Destinations & Access -->
+<div class="space-y-12">
+<!-- Blocked Destinations -->
+<section class="space-y-6">
+<div class="flex items-center justify-between border-b border-outline-variant/15 pb-4">
+<h3 class="text-xl font-headline font-bold text-on-surface tracking-tight">Blocked Destinations</h3>
+<span class="material-symbols-outlined text-on-surface-variant/50">block</span>
+</div>
+<div class="space-y-3">
+<!-- Restricted Item -->
+<div class="flex items-center justify-between p-4 bg-surface-container-low rounded-xl border border-outline-variant/10">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-lg overflow-hidden grayscale">
+<img class="w-full h-full object-cover" data-alt="Aerial view of a mountain range in fog" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAZM1VbeoSePt5wt30NsJkeZmCQQcglEDr5eInqG8D-p8brRjWQUPeSbA2QcRh-HWqnFas_b-cB5HxB_4iJ4b-b2mihWW6pWv-_IYN1FEHajLKcZaS4v0vU5w1r_8CY37qfT81fVwveT692rnC9byJWMKONZ9T_jcXW6E3yCUwyXl8EMvWmQomzsbujkK-nwRNklQPcCpG7n5KrnPbBameQWBQnsQ9VdLmzsiSUL9v-SdSnBVFoo2sHgzN7GMsQTB8wgUi4Ie-VPD8"/>
+</div>
+<div>
+<p class="font-medium text-on-surface">The Void Ridge</p>
+<p class="text-[10px] text-error font-label uppercase tracking-tighter">Restriction Active</p>
+</div>
+</div>
+<button class="p-2 text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">settings_backup_restore</span>
+</button>
+</div>
+<!-- Restricted Item -->
+<div class="flex items-center justify-between p-4 bg-surface-container-low rounded-xl border border-outline-variant/10">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-lg overflow-hidden grayscale">
+<img class="w-full h-full object-cover" data-alt="Cyberpunk neon city alleyway" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDtV-8tKo6LHP-mlFJ4GQdviVONHRhgd_oRmz3nJVS3oxwWAZzVBnaasAiVldbl_nWHZRUZDPgObZJdLM3WuvVbc1sAMdI4h-vlLhEZHep607SHmYKWxif-LChgMPlCoPz6fM9sBe3vkiUuzhc_IuK-t0UpIzMlqp_zqg35zBN6AuxSadtQ8rfPYWHG5PJtu35c1Oqx65NtKSpCvv6ubmyip7VCLNfI23XFFXBgJpvbhABL6HwQx2AVuUP2VSj0VsZ0BrsL9uwcNnk"/>
+</div>
+<div>
+<p class="font-medium text-on-surface">Neo-Kyoto Sector 7</p>
+<p class="text-[10px] text-error font-label uppercase tracking-tighter">Restriction Active</p>
+</div>
+</div>
+<button class="p-2 text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">settings_backup_restore</span>
+</button>
+</div>
+<!-- Restricted Item -->
+<div class="flex items-center justify-between p-4 bg-surface-container-low rounded-xl border border-outline-variant/10">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-lg overflow-hidden grayscale">
+<img class="w-full h-full object-cover" data-alt="Serene mountain lake reflection" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCvOoBc96peq4Exe8Nixbwbw-NKYwEDoPdgSBDcW_D6SczliZ15FB-gB_hG-J7TOo8w1kwhE5e7jX5dL3xswr_lGQQryrnqaoGxxFs9VmZh-NjxaCf-m2T1BjR-k_Hsz3QpdxPEwLuwuPAOd1cTdEeMNxVPfKhE-Vnjo0HZXf6POpNptj0dscfau_D2E3KfPXAzFJJtJtYxADhjqoDOaK_r-6qdCqrlNmtzIwOLJ0rQ81ZlelCxuuZnrmqAQA3DJWjLQ78zsdx6nEk"/>
+</div>
+<div>
+<p class="font-medium text-on-surface">Echo Lake</p>
+<p class="text-[10px] text-error font-label uppercase tracking-tighter">Restriction Active</p>
+</div>
+</div>
+<button class="p-2 text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">settings_backup_restore</span>
+</button>
+</div>
+</div>
+<button class="w-full py-4 border border-dashed border-outline-variant/40 rounded-xl text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all flex items-center justify-center gap-2 group">
+<span class="material-symbols-outlined text-sm group-hover:scale-110 transition-transform">add</span>
+<span class="text-xs uppercase tracking-widest font-label">Add New Exclusion</span>
+</button>
+</section>
+<!-- Security & Privacy -->
+<section class="space-y-6">
+<div class="flex items-center justify-between border-b border-outline-variant/15 pb-4">
+<h3 class="text-xl font-headline font-bold text-on-surface tracking-tight">Security</h3>
+</div>
+<div class="space-y-2">
+<div class="flex items-center justify-between py-3">
+<p class="text-on-surface-variant text-sm">Two-Factor Auth</p>
+<span class="text-primary text-[10px] uppercase font-bold tracking-widest">Enabled</span>
+</div>
+<div class="flex items-center justify-between py-3">
+<p class="text-on-surface-variant text-sm">Biometric Protocol</p>
+<span class="text-on-surface-variant/40 text-[10px] uppercase font-bold tracking-widest">Not Configured</span>
+</div>
+<div class="flex items-center justify-between py-3">
+<p class="text-on-surface-variant text-sm">Active Sessions</p>
+<span class="bg-surface-container-highest px-2 py-0.5 rounded text-[10px] text-on-surface">3 Active</span>
+</div>
+</div>
+</section>
+</div>
+</div>
+<!-- Danger Zone -->
+<section class="mt-20 pt-12 border-t border-error/20">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+<div>
+<h3 class="text-xl font-headline font-bold text-error tracking-tight">Terminal Action</h3>
+<p class="text-on-surface-variant text-sm mt-1">This will permanently purge all protocol data and memberships.</p>
+</div>
+<button class="px-8 py-3 border border-error/30 text-error hover:bg-error/10 transition-colors rounded font-headline font-bold uppercase tracking-widest text-[10px]">Deactivate Protocol</button>
+</div>
+</section>
+</main>
+<!-- BottomNavBar Shell -->
+<nav class="fixed bottom-0 left-0 w-full z-50 bg-[#1b1b1d]/60 backdrop-blur-2xl border-t border-[#47464a]/10 h-20 px-4 pb-safe flex justify-around items-center shadow-[0_-4px_40px_rgba(4,0,81,0.15)] rounded-t-2xl">
+<div class="flex flex-col items-center justify-center text-[#c8c6ca] p-3 hover:bg-[#2a2a2c] transition-all duration-300 scale-95 active:scale-90 transition-transform cursor-pointer">
+<span class="material-symbols-outlined">timer</span>
+</div>
+<div class="flex flex-col items-center justify-center text-[#c8c6ca] p-3 hover:bg-[#2a2a2c] transition-all duration-300 scale-95 active:scale-90 transition-transform cursor-pointer">
+<span class="material-symbols-outlined">adjust</span>
+</div>
+<div class="flex flex-col items-center justify-center text-[#c8c6ca] p-3 hover:bg-[#2a2a2c] transition-all duration-300 scale-95 active:scale-90 transition-transform cursor-pointer">
+<span class="material-symbols-outlined">analytics</span>
+</div>
+<div class="flex flex-col items-center justify-center text-[#c0c1ff] bg-[#353437]/50 rounded-xl p-3 scale-95 transition-transform cursor-pointer">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">person</span>
+</div>
+</nav>
+</body></html>

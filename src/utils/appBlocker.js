@@ -50,7 +50,12 @@ export const hasUsagePermission = async () => {
  * Open Android Usage Access settings screen.
  */
 export const openUsageSettings = async () => {
-  if (!isAndroid || !NativeBlocker) return;
+  if (!isAndroid) return;
+  if (!NativeBlocker) {
+    // Fallback when native module isn't available yet
+    Linking.openURL('android.settings.USAGE_ACCESS_SETTINGS').catch(() => Linking.openSettings());
+    return;
+  }
   try {
     await NativeBlocker.openUsageSettings();
   } catch (e) {

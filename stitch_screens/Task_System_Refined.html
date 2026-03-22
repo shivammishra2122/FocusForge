@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>OBSIDIAN | Task Protocol</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;family=Manrope:wght@300;400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-surface-variant": "#c8c6ca",
+              "tertiary-container": "#180044",
+              "on-error-container": "#ffdad6",
+              "on-tertiary-fixed": "#23005c",
+              "on-error": "#690005",
+              "tertiary": "#d0bcff",
+              "on-tertiary-container": "#8d5ff9",
+              "surface": "#131315",
+              "inverse-primary": "#494bd6",
+              "on-tertiary": "#3c0091",
+              "secondary-container": "#444173",
+              "inverse-surface": "#e5e1e4",
+              "on-secondary-container": "#b3afe9",
+              "on-primary-fixed-variant": "#2f2ebe",
+              "on-tertiary-fixed-variant": "#5516be",
+              "tertiary-fixed-dim": "#d0bcff",
+              "error": "#ffb4ab",
+              "surface-container": "#201f21",
+              "surface-container-high": "#2a2a2c",
+              "error-container": "#93000a",
+              "surface-container-highest": "#353437",
+              "surface-tint": "#c0c1ff",
+              "on-secondary-fixed": "#181445",
+              "outline-variant": "#47464a",
+              "surface-dim": "#131315",
+              "on-background": "#e5e1e4",
+              "on-primary-container": "#696df8",
+              "outline": "#919095",
+              "on-primary-fixed": "#07006c",
+              "surface-container-low": "#1b1b1d",
+              "surface-bright": "#39393b",
+              "primary-fixed-dim": "#c0c1ff",
+              "on-primary": "#1000a9",
+              "surface-variant": "#353437",
+              "on-surface": "#e5e1e4",
+              "primary-fixed": "#e1e0ff",
+              "secondary": "#c4c1fb",
+              "secondary-fixed": "#e3dfff",
+              "secondary-fixed-dim": "#c4c1fb",
+              "tertiary-fixed": "#e9ddff",
+              "on-secondary-fixed-variant": "#444173",
+              "primary": "#c0c1ff",
+              "background": "#131315",
+              "inverse-on-surface": "#303032",
+              "on-secondary": "#2d2a5b",
+              "primary-container": "#040051",
+              "surface-container-lowest": "#0e0e10"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+      .glass-card {
+        background: rgba(42, 42, 44, 0.6);
+        backdrop-filter: blur(12px);
+      }
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+      .priority-glow-high {
+        box-shadow: 0 0 12px rgba(192, 193, 255, 0.15);
+      }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface font-body selection:bg-primary/30">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-[#131315]/80 backdrop-blur-xl border-b border-[#47464a]/15 flex items-center justify-between px-6 h-16">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-[#c0c1ff] cursor-pointer">menu</span>
+<h1 class="text-xl tracking-[0.2em] font-light text-[#e5e1e4] font-headline uppercase">OBSIDIAN</h1>
+</div>
+<div class="w-8 h-8 rounded-full bg-surface-container-highest border border-outline-variant/30 flex items-center justify-center overflow-hidden">
+<img alt="User avatar" class="w-full h-full object-cover" data-alt="Minimalistic user profile avatar icon" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBaIrFkQB2lxAgPGvlY-wdgGJEqyWRbxOuiBpftmkAUriztNDu2wDFPY59zyy82pVwZA3ou0vNS14lCsRsOKC_RE3WWr7YcRy1UnTlzZmohRALor-uIKLrAzvFz5cD4LreLayDRZznUWXKtGEjkxsnvEqaCeXI8elQgKEV0fjjmrsxKamadijUDF_6yD4qqC5i5ipop8s322ApmZdIjlocx7xqpF-U0yjyUTVsQ72DnBwbH7Np3A5GnMTqJZY_lkFKytD5t08bFdXc"/>
+</div>
+</header>
+<main class="pt-24 pb-32 px-6 max-w-5xl mx-auto space-y-12">
+<!-- Level & Progression Header (Asymmetric Layout) -->
+<section class="grid grid-cols-1 md:grid-cols-12 gap-8 items-end">
+<div class="md:col-span-4 space-y-2">
+<span class="text-xs font-label tracking-widest text-on-surface-variant uppercase">Operator Status</span>
+<div class="relative inline-block">
+<h2 class="text-5xl font-headline font-extrabold tracking-tighter text-on-surface">Level 14</h2>
+<!-- Level Up Highlight -->
+<div class="absolute -top-1 -right-4 w-2 h-2 rounded-full bg-primary shadow-[0_0_10px_#c0c1ff]"></div>
+</div>
+</div>
+<div class="md:col-span-8 w-full space-y-4">
+<div class="flex justify-between items-end">
+<span class="text-xs font-label text-on-surface-variant uppercase tracking-widest">Experience Points Protocol</span>
+<span class="text-sm font-headline font-bold text-primary">8,450 / 10,000 XP</span>
+</div>
+<div class="h-1.5 w-full bg-surface-container-lowest rounded-full overflow-hidden">
+<div class="h-full bg-gradient-to-r from-on-primary-container to-primary w-[84%] relative">
+<div class="absolute inset-0 bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,0.2)_50%,transparent_100%)] w-1/2 animate-pulse"></div>
+</div>
+</div>
+</div>
+</section>
+<!-- Active Tasks Cluster -->
+<section class="space-y-6">
+<div class="flex items-center justify-between">
+<h3 class="text-lg font-headline font-semibold tracking-tight text-on-surface">Active Protocols</h3>
+<span class="text-xs font-label text-outline uppercase tracking-tighter">3 Sequences Pending</span>
+</div>
+<div class="grid grid-cols-1 gap-4">
+<!-- High Priority Task -->
+<div class="glass-card p-6 rounded-xl border border-outline-variant/10 flex items-center justify-between group hover:border-primary/30 transition-all duration-500 priority-glow-high">
+<div class="flex items-center gap-6">
+<div class="relative">
+<div class="w-3 h-3 rounded-full bg-primary ring-4 ring-primary-container/30"></div>
+<div class="absolute inset-0 w-3 h-3 rounded-full bg-primary animate-ping opacity-20"></div>
+</div>
+<div class="space-y-1">
+<h4 class="text-on-surface font-medium text-base tracking-tight">Financial Model Architecture</h4>
+<div class="flex items-center gap-3">
+<span class="text-[10px] font-label text-on-surface-variant uppercase tracking-widest border border-outline-variant/20 px-2 py-0.5 rounded">High Priority</span>
+<span class="text-[10px] font-label text-primary/80 uppercase tracking-widest flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">bolt</span> +450 XP
+                                </span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<span class="text-xs font-label text-outline">02:45:12</span>
+<button class="w-10 h-10 rounded bg-surface-container-highest flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">radio_button_unchecked</span>
+</button>
+</div>
+</div>
+<!-- Medium Priority Task -->
+<div class="bg-surface-container-low p-6 rounded-xl border border-outline-variant/5 flex items-center justify-between group hover:bg-surface-container transition-all duration-300">
+<div class="flex items-center gap-6">
+<div class="w-3 h-3 rounded-full bg-secondary ring-4 ring-secondary-container/20"></div>
+<div class="space-y-1">
+<h4 class="text-on-surface font-medium text-base tracking-tight">Review Security Clearance Nodes</h4>
+<div class="flex items-center gap-3">
+<span class="text-[10px] font-label text-on-surface-variant uppercase tracking-widest border border-outline-variant/20 px-2 py-0.5 rounded">Medium</span>
+<span class="text-[10px] font-label text-secondary uppercase tracking-widest flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">bolt</span> +220 XP
+                                </span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<span class="text-xs font-label text-outline">Tomorrow</span>
+<button class="w-10 h-10 rounded bg-surface-container-highest flex items-center justify-center text-on-surface-variant hover:text-secondary transition-colors">
+<span class="material-symbols-outlined">radio_button_unchecked</span>
+</button>
+</div>
+</div>
+<!-- Low Priority Task -->
+<div class="bg-surface-container-low p-6 rounded-xl border border-outline-variant/5 flex items-center justify-between group hover:bg-surface-container transition-all duration-300">
+<div class="flex items-center gap-6">
+<div class="w-3 h-3 rounded-full bg-outline-variant"></div>
+<div class="space-y-1">
+<h4 class="text-on-surface/70 font-medium text-base tracking-tight">Database Index Optimization</h4>
+<div class="flex items-center gap-3">
+<span class="text-[10px] font-label text-on-surface-variant uppercase tracking-widest border border-outline-variant/20 px-2 py-0.5 rounded">Low</span>
+<span class="text-[10px] font-label text-on-surface-variant uppercase tracking-widest flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">bolt</span> +80 XP
+                                </span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<span class="text-xs font-label text-outline">No Due Date</span>
+<button class="w-10 h-10 rounded bg-surface-container-highest flex items-center justify-center text-on-surface-variant hover:text-outline transition-colors">
+<span class="material-symbols-outlined">radio_button_unchecked</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Task History Section -->
+<section class="space-y-6 opacity-80">
+<div class="flex items-center justify-between">
+<h3 class="text-sm font-headline font-bold uppercase tracking-[0.2em] text-on-surface-variant">Archived Protocols</h3>
+<span class="h-px flex-1 mx-4 bg-outline-variant/20"></span>
+</div>
+<div class="space-y-3">
+<div class="flex items-center justify-between p-4 bg-surface-container-lowest/50 rounded border border-outline-variant/5">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-primary/60 text-sm">check_circle</span>
+<span class="text-sm text-on-surface-variant font-body">Infrastructure Audit: Sector 7</span>
+</div>
+<span class="text-[10px] font-label text-outline uppercase">+350 XP</span>
+</div>
+<div class="flex items-center justify-between p-4 bg-surface-container-lowest/50 rounded border border-outline-variant/5">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-primary/60 text-sm">check_circle</span>
+<span class="text-sm text-on-surface-variant font-body">UI Component Refactoring</span>
+</div>
+<span class="text-[10px] font-label text-outline uppercase">+120 XP</span>
+</div>
+</div>
+</section>
+</main>
+<!-- Floating Action Button -->
+<button class="fixed bottom-24 right-6 w-14 h-14 bg-gradient-to-br from-primary to-on-primary-container rounded-xl shadow-[0_8px_32px_rgba(4,0,81,0.4)] flex items-center justify-center text-on-primary group hover:scale-105 transition-transform duration-300 active:scale-95">
+<span class="material-symbols-outlined text-2xl group-hover:rotate-90 transition-transform duration-500">add</span>
+</button>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 bg-[#1b1b1d]/60 backdrop-blur-2xl border-t border-[#47464a]/10 flex justify-around items-center h-20 px-4 pb-safe shadow-[0_-4px_40px_rgba(4,0,81,0.15)] md:hidden">
+<div class="flex flex-col items-center justify-center text-[#c8c6ca] p-3 hover:bg-[#2a2a2c] transition-all duration-300 scale-95 active:scale-90">
+<span class="material-symbols-outlined">timer</span>
+</div>
+<div class="flex flex-col items-center justify-center text-[#c0c1ff] bg-[#353437]/50 rounded-xl p-3 transition-all duration-300 scale-95 active:scale-90">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">adjust</span>
+</div>
+<div class="flex flex-col items-center justify-center text-[#c8c6ca] p-3 hover:bg-[#2a2a2c] transition-all duration-300 scale-95 active:scale-90">
+<span class="material-symbols-outlined">analytics</span>
+</div>
+<div class="flex flex-col items-center justify-center text-[#c8c6ca] p-3 hover:bg-[#2a2a2c] transition-all duration-300 scale-95 active:scale-90">
+<span class="material-symbols-outlined">person</span>
+</div>
+</nav>
+<!-- Desktop Sidebar Suggestion (Responsive logic) -->
+<div class="hidden md:flex fixed left-0 top-16 bottom-0 w-20 bg-surface-container-low border-r border-outline-variant/10 flex-col items-center py-8 space-y-8">
+<div class="w-10 h-10 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest hover:text-primary transition-all cursor-pointer">
+<span class="material-symbols-outlined">timer</span>
+</div>
+<div class="w-10 h-10 rounded-lg flex items-center justify-center text-primary bg-surface-container-highest transition-all cursor-pointer shadow-sm">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">adjust</span>
+</div>
+<div class="w-10 h-10 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest hover:text-primary transition-all cursor-pointer">
+<span class="material-symbols-outlined">analytics</span>
+</div>
+<div class="w-10 h-10 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest hover:text-primary transition-all cursor-pointer">
+<span class="material-symbols-outlined">person</span>
+</div>
+</div>
+</body></html>

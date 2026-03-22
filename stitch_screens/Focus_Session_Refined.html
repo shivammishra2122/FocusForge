@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Obsidian - Focus Session</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&amp;family=Inter:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-surface-variant": "#c8c6ca",
+              "tertiary-container": "#180044",
+              "on-error-container": "#ffdad6",
+              "on-tertiary-fixed": "#23005c",
+              "on-error": "#690005",
+              "tertiary": "#d0bcff",
+              "on-tertiary-container": "#8d5ff9",
+              "surface": "#131315",
+              "inverse-primary": "#494bd6",
+              "on-tertiary": "#3c0091",
+              "secondary-container": "#444173",
+              "inverse-surface": "#e5e1e4",
+              "on-secondary-container": "#b3afe9",
+              "on-primary-fixed-variant": "#2f2ebe",
+              "on-tertiary-fixed-variant": "#5516be",
+              "tertiary-fixed-dim": "#d0bcff",
+              "error": "#ffb4ab",
+              "surface-container": "#201f21",
+              "surface-container-high": "#2a2a2c",
+              "error-container": "#93000a",
+              "surface-container-highest": "#353437",
+              "surface-tint": "#c0c1ff",
+              "on-secondary-fixed": "#181445",
+              "outline-variant": "#47464a",
+              "surface-dim": "#131315",
+              "on-background": "#e5e1e4",
+              "on-primary-container": "#696df8",
+              "outline": "#919095",
+              "on-primary-fixed": "#07006c",
+              "surface-container-low": "#1b1b1d",
+              "surface-bright": "#39393b",
+              "primary-fixed-dim": "#c0c1ff",
+              "on-primary": "#1000a9",
+              "surface-variant": "#353437",
+              "on-surface": "#e5e1e4",
+              "primary-fixed": "#e1e0ff",
+              "secondary": "#c4c1fb",
+              "secondary-fixed": "#e3dfff",
+              "secondary-fixed-dim": "#c4c1fb",
+              "tertiary-fixed": "#e9ddff",
+              "on-secondary-fixed-variant": "#444173",
+              "primary": "#c0c1ff",
+              "background": "#131315",
+              "inverse-on-surface": "#303032",
+              "on-secondary": "#2d2a5b",
+              "primary-container": "#040051",
+              "surface-container-lowest": "#0e0e10"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+      .glass-card {
+        background: rgba(42, 42, 44, 0.4);
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+      }
+      .ambient-glow {
+        background: radial-gradient(circle at 50% 50%, rgba(192, 193, 255, 0.03) 0%, rgba(19, 19, 21, 0) 70%);
+      }
+      .timer-glow {
+        text-shadow: 0 0 30px rgba(192, 193, 255, 0.2);
+      }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface font-body selection:bg-primary selection:text-on-primary overflow-hidden">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-[#131315]/80 backdrop-blur-xl border-b border-[#47464a]/15 flex items-center justify-between px-6 h-16">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-[#c0c1ff]">menu</span>
+</div>
+<h1 class="text-xl tracking-[0.2em] font-light text-[#e5e1e4] font-headline uppercase">OBSIDIAN</h1>
+<div class="w-8 h-8 rounded-full bg-surface-container-highest overflow-hidden border border-outline-variant/30">
+<img alt="User Profile" data-alt="Close up of a professional user avatar silhouette" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCi-R0716uYvIDyOGH7kj4IHabPGd0inZrYg3Ma96aa8ySACHLS7YkPAXzV743cLoGanK9Cwl_7-ISxk4vX9DJc3ZlHyoRBHVlNs7f1YDk_GFkJZjZthov8gkxJ6H3tymkOkVRjSC9GP5AKV_6kFUuP3pNXkek4Ft5Pz12chEev7UQIBpTmoynivuAyZFL7IsPSW8N_2R8DlSAkzkf1awRNlwr2ybvIx1XPp5RTFaTCCNh5YhymiTwFAPBV5XVZJA7LupWL5Gtgifk"/>
+</div>
+</header>
+<main class="relative min-h-screen pt-16 pb-20 flex flex-col items-center justify-center px-6 overflow-hidden">
+<!-- Ambient Background Elements -->
+<div class="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[150%] ambient-glow"></div>
+<div class="absolute top-[-10%] right-[-5%] w-[40%] h-[40%] bg-primary/5 blur-[120px] rounded-full"></div>
+<div class="absolute bottom-[-10%] left-[-5%] w-[30%] h-[30%] bg-tertiary/5 blur-[100px] rounded-full"></div>
+</div>
+<!-- Focus Zone Content -->
+<section class="relative z-10 w-full max-w-4xl flex flex-col items-center">
+<!-- Current Mission -->
+<div class="mb-12 text-center">
+<span class="text-on-surface-variant font-label text-[10px] tracking-[0.2em] uppercase mb-3 block">Current Mission</span>
+<h2 class="text-2xl md:text-3xl font-headline font-bold tracking-tight text-on-surface">System Architecture Refactoring</h2>
+</div>
+<!-- Timer Module -->
+<div class="relative flex flex-col items-center mb-16">
+<!-- Outer Pulse Ring -->
+<div class="absolute inset-0 -m-8 border border-primary/10 rounded-full animate-[pulse_4s_ease-in-out_infinite]"></div>
+<div class="absolute inset-0 -m-16 border border-primary/5 rounded-full animate-[pulse_6s_ease-in-out_infinite]"></div>
+<div class="text-[120px] md:text-[180px] font-headline font-extralight tracking-tighter text-primary leading-none timer-glow">
+                    24:58
+                </div>
+<div class="mt-4 flex items-center gap-3">
+<div class="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_8px_#c0c1ff]"></div>
+<span class="text-on-surface-variant font-label text-sm tracking-widest uppercase">Deep Work Active</span>
+</div>
+<!-- Efficiency Stats: Bento Grid -->
+<div class="grid grid-cols-2 md:grid-cols-3 gap-4 w-full mt-12">
+<!-- Efficiency -->
+<div class="glass-card p-6 rounded-xl border border-outline-variant/10 flex flex-col gap-2">
+<span class="text-on-surface-variant font-label text-[10px] uppercase tracking-wider">Efficiency</span>
+<div class="flex items-baseline gap-2">
+<span class="text-2xl font-headline font-bold text-on-surface">94%</span>
+<span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1;">trending_up</span>
+</div>
+</div>
+<!-- Session Load -->
+<div class="glass-card p-6 rounded-xl border border-outline-variant/10 flex flex-col gap-2">
+<span class="text-on-surface-variant font-label text-[10px] uppercase tracking-wider">Focus Index</span>
+<div class="flex items-baseline gap-2">
+<span class="text-2xl font-headline font-bold text-on-surface">0.82</span>
+<span class="text-[10px] text-primary/60 font-medium">PKL</span>
+</div>
+</div>
+<!-- Distractions (Hidden on mobile for focus) -->
+<div class="hidden md:flex glass-card p-6 rounded-xl border border-outline-variant/10 flex-col gap-2">
+<span class="text-on-surface-variant font-label text-[10px] uppercase tracking-wider">Interruption Risk</span>
+<div class="flex items-baseline gap-2">
+<span class="text-2xl font-headline font-bold text-on-surface">Low</span>
+<div class="h-2 w-2 rounded-full bg-primary/40 animate-pulse"></div>
+</div>
+</div>
+</div>
+<!-- Action Area -->
+<div class="mt-16 w-full flex flex-col items-center gap-6">
+<button class="px-12 py-4 bg-gradient-to-br from-primary to-on-primary-container text-on-primary font-headline font-bold tracking-tight rounded-md hover:brightness-110 transition-all duration-300 shadow-xl shadow-primary/10 group flex items-center gap-3">
+                    Finish Session
+                    <span class="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</button>
+<button class="text-on-surface-variant hover:text-on-surface font-label text-xs uppercase tracking-[0.2em] transition-colors py-2">
+                    Pause Protocol
+                </button>
+</div>
+</div></section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 bg-[#1b1b1d]/60 backdrop-blur-2xl border-t border-[#47464a]/10 flex justify-around items-center h-20 px-4 pb-safe shadow-[0_-4px_40px_rgba(4,0,81,0.15)] md:hidden">
+<div class="flex flex-col items-center justify-center text-[#c0c1ff] bg-[#353437]/50 rounded-xl p-3 scale-95 transition-transform">
+<span class="material-symbols-outlined">timer</span>
+</div>
+<div class="flex flex-col items-center justify-center text-[#c8c6ca] p-3 hover:bg-[#2a2a2c] transition-all duration-300 scale-95 transition-transform">
+<span class="material-symbols-outlined">adjust</span>
+</div>
+<div class="flex flex-col items-center justify-center text-[#c8c6ca] p-3 hover:bg-[#2a2a2c] transition-all duration-300 scale-95 transition-transform">
+<span class="material-symbols-outlined">analytics</span>
+</div>
+<div class="flex flex-col items-center justify-center text-[#c8c6ca] p-3 hover:bg-[#2a2a2c] transition-all duration-300 scale-95 transition-transform">
+<span class="material-symbols-outlined">person</span>
+</div>
+</nav>
+<!-- Map/Background Reference Decorator -->
+<div class="fixed bottom-12 right-12 opacity-5 pointer-events-none hidden lg:block">
+<img alt="Network Grid Map" class="w-64 h-64 mix-blend-screen" data-alt="Abstract technical grid pattern representing a digital landscape" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBh-wxqRLXbk1YtuDDq9pq48byuEn9PjSRWX8fKb5AwaTvmIJB90JsH6PG7lcUXYcQnw7lxUYvv4TE8YQILm0Y0R0qkQq8Y-ZIjc_8HyTRf12ADpBOGRCZwJwDoTeFsOxGtLkTdv0wp6qD1HTJdFFZWok4QtelcG06whOWd54jPxuLlyOWxVlBWpZ3dOj0sLJHnekyFlf05BfBsfXLBd8CGwjGVHOGvCTrPF0MtTOtdYEDlOsvN1JubFuvG3LLBXOxEpID7pN0jUeg"/>
+</div>
+</body></html>
