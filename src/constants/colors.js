@@ -1,5 +1,21 @@
 // FocusForge — Premium Monochrome Palette
-// One accent. No noise. Clean like Linear.app.
+// Obsidian theme tokens unified across screens
+
+export const Theme = {
+  bg: '#131315',
+  surface: '#1b1b1d',
+  surfaceHigh: '#2a2a2c',
+  surfaceHighest: '#353437',
+  onSurface: '#e5e1e4',
+  onSurfaceVariant: '#c8c6ca',
+  primary: '#c0c1ff',
+  primaryVariant: '#696df8',
+  tertiary: '#d0bcff',
+  secondary: '#c4c1fb',
+  error: '#ffb4ab',
+  border: 'rgba(71, 70, 74, 0.15)',
+};
+
 export const Colors = {
   // Backgrounds: The Obsidian Depth
   bg: '#131313',               // Base Layer
@@ -24,6 +40,11 @@ export const Colors = {
   secondaryLight: '#46F5E0',
   secondaryGlow: 'rgba(0, 216, 196, 0.3)',
 
+  // Tokens required for existing screens
+  accent: '#00D8C4',
+  accentWarm: '#F59E0B',
+  gradientAccent: ['#00D8C4', '#46F5E0'],
+
   // Semantic
   danger: '#FFB4AB',
   dangerSubtle: 'rgba(147, 0, 10, 0.2)',
@@ -42,3 +63,5 @@ export const Colors = {
   gradientCard: ['#1B1B1B', '#1B1B1B'],   // Solid cards now
   gradientForge: { colors: ['#6200EE', '#00D8C4'], start: {x: 0, y: 0}, end: {x: 1, y: 1} },
 };
+
+export default Colors;

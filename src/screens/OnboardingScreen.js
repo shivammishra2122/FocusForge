@@ -24,7 +24,7 @@ const SLIDES = [
     title: 'Build Laser Focus',
     subtitle: 'FocusForge helps you crush distractions and unlock your full potential — one session at a time.',
     bg: ['#0D1220', '#0D0F14'],
-    accent: Colors.primary,
+    accent: Colors.primary || '#6200EE',
   },
   {
     id: '2',
@@ -32,7 +32,7 @@ const SLIDES = [
     title: 'Pomodoro Powered',
     subtitle: 'Use science-backed techniques to get more done in less time. Work in focused bursts, recharge, repeat.',
     bg: ['#0D1A18', '#0D0F14'],
-    accent: Colors.accent,
+    accent: Colors.secondary || '#00D8C4',
   },
   {
     id: '3',
@@ -40,7 +40,7 @@ const SLIDES = [
     title: 'Build Unstoppable Streaks',
     subtitle: 'Track your daily progress, earn XP, level up and unlock achievements as you crush your goals.',
     bg: ['#1A0D12', '#0D0F14'],
-    accent: Colors.secondary,
+    accent: Colors.secondary || '#00D8C4',
   },
   {
     id: '4',
@@ -48,7 +48,7 @@ const SLIDES = [
     title: 'Set Your Goal',
     subtitle: '',
     bg: ['#0D1220', '#0D0F14'],
-    accent: Colors.accentWarm,
+    accent: Colors.accentWarm || Colors.warning || '#F59E0B',
     isGoal: true,
   },
 ];
@@ -80,57 +80,60 @@ export default function OnboardingScreen({ onComplete }) {
     onComplete();
   };
 
-  const renderSlide = ({ item }) => (
-    <LinearGradient colors={item.bg} style={styles.slide}>
-      <View style={styles.slideContent}>
-        <View style={[styles.emojiContainer, { borderColor: item.accent + '55', backgroundColor: item.accent + '15' }]}>
-          <Text style={styles.emoji}>{item.emoji}</Text>
-        </View>
+  const renderSlide = ({ item }) => {
+    const accentColor = item.accent || Colors.primary;
+    return (
+      <LinearGradient colors={item.bg} style={styles.slide}>
+        <View style={styles.slideContent}>
+          <View style={[styles.emojiContainer, { borderColor: accentColor + '55', backgroundColor: accentColor + '15' }]}>
+            <Text style={styles.emoji}>{item.emoji}</Text>
+          </View>
 
-        <Text style={styles.title}>{item.title}</Text>
+          <Text style={styles.title}>{item.title}</Text>
 
-        {!item.isGoal ? (
-          <Text style={styles.subtitle}>{item.subtitle}</Text>
-        ) : (
-          <View style={styles.goalContainer}>
-            <Text style={styles.subtitle}>Tell us about yourself to personalize your experience.</Text>
+          {!item.isGoal ? (
+            <Text style={styles.subtitle}>{item.subtitle}</Text>
+          ) : (
+            <View style={styles.goalContainer}>
+              <Text style={styles.subtitle}>Tell us about yourself to personalize your experience.</Text>
 
-            <View style={styles.inputSection}>
-              <Text style={styles.inputLabel}>Your Name</Text>
-              <TextInput
-                style={styles.input}
-                value={name}
-                onChangeText={setName}
-                placeholder="Enter your name..."
-                placeholderTextColor={Colors.textMuted}
-                autoCapitalize="words"
-              />
-            </View>
+              <View style={styles.inputSection}>
+                <Text style={styles.inputLabel}>Your Name</Text>
+                <TextInput
+                  style={styles.input}
+                  value={name}
+                  onChangeText={setName}
+                  placeholder="Enter your name..."
+                  placeholderTextColor={Colors.textMuted}
+                  autoCapitalize="words"
+                />
+              </View>
 
-            <View style={styles.inputSection}>
-              <Text style={styles.inputLabel}>Daily Focus Goal (hours)</Text>
-              <View style={styles.hoursRow}>
-                {['1', '2', '3', '4', '5', '6'].map((h) => (
-                  <TouchableOpacity
-                    key={h}
-                    style={[
-                      styles.hourBtn,
-                      goalHours === h && { backgroundColor: item.accent, borderColor: item.accent },
-                    ]}
-                    onPress={() => { setGoalHours(h); hapticLight(); }}
-                  >
-                    <Text style={[styles.hourBtnText, goalHours === h && { color: '#fff' }]}>{h}h</Text>
-                  </TouchableOpacity>
-                ))}
+              <View style={styles.inputSection}>
+                <Text style={styles.inputLabel}>Daily Focus Goal (hours)</Text>
+                <View style={styles.hoursRow}>
+                  {['1', '2', '3', '4', '5', '6'].map((h) => (
+                    <TouchableOpacity
+                      key={h}
+                      style={[
+                        styles.hourBtn,
+                        goalHours === h && { backgroundColor: accentColor, borderColor: accentColor },
+                      ]}
+                      onPress={() => { setGoalHours(h); hapticLight(); }}
+                    >
+                      <Text style={[styles.hourBtnText, goalHours === h && { color: '#fff' }]}>{h}h</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
             </View>
-          </View>
-        )}
-      </View>
-    </LinearGradient>
-  );
+          )}
+        </View>
+      </LinearGradient>
+    );
+  };
 
-  const slide = SLIDES[currentIndex];
+  const slide = SLIDES[currentIndex] || SLIDES[0];
 
   return (
     <View style={styles.container}>
@@ -153,7 +156,7 @@ export default function OnboardingScreen({ onComplete }) {
         {SLIDES.map((_, i) => (
           <View
             key={i}
-            style={[styles.dot, { backgroundColor: i === currentIndex ? slide.accent : Colors.textMuted }]}
+            style={[styles.dot, { backgroundColor: i === currentIndex ? (slide.accent || Colors.primary) : Colors.textMuted }]}
           />
         ))}
       </View>

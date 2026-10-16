@@ -45,10 +45,10 @@ export default function AnalyticsScreen({ navigation }) {
     ]);
     setProfile(p || {});
     setStats(s || { xp: 0, streak: 0, totalMinutes: 0 });
-    
+
     const days = getLastNDays(7);
     setWeekData(days.map((d) => ({ key: d, label: getDayLabel(d), minutes: streakData[d] || 0 })));
-    
+
     const { getUnlockedAchievements } = require('../utils/storage');
     const unlocked = await getUnlockedAchievements();
     setUnlockedAchievements(unlocked);
@@ -62,7 +62,7 @@ export default function AnalyticsScreen({ navigation }) {
   const todayKey = new Date().toISOString().split('T')[0];
   const maxWeekMin = Math.max(...weekData.map((d) => d.minutes), 1);
   const barW = Math.max((CHART_WIDTH - (weekData.length - 1) * 8) / weekData.length, 10);
-  
+
   const totalHours = Math.floor(stats.totalMinutes / 60);
 
   return (
@@ -70,29 +70,29 @@ export default function AnalyticsScreen({ navigation }) {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => navigation.openDrawer && navigation.openDrawer()}>
+          <TouchableOpacity onPress={() => (navigation.openDrawer ? navigation.openDrawer() : navigation.navigate('Profile'))}>
             <MaterialCommunityIcons name="menu" size={26} color={Theme.primary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>OBSIDIAN</Text>
         </View>
         <TouchableOpacity style={styles.profileBtn}>
-           <Image source={{ uri: profile?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80' }} style={styles.profileImg} />
+          <Image source={{ uri: profile?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80' }} style={styles.profileImg} />
         </TouchableOpacity>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        
+
         {/* System Status Banner */}
         <View style={styles.statusSection}>
           <Text style={styles.statusLabel}>SYSTEM STATUS: EVOLUTIONARY</Text>
           <Text style={styles.levelText}>Level {levelInfo.level}</Text>
           <Text style={styles.titleText}>{levelInfo.title}</Text>
-          
+
           <View style={styles.hoursRow}>
             <Text style={styles.hoursValue}>{totalHours.toLocaleString()}</Text>
             <Text style={styles.hoursLabel}>TOTAL PRODUCTIVE HOURS</Text>
           </View>
-          
+
           <View style={styles.progressRow}>
             <Text style={styles.progressLabel}>XP PROGRESS</Text>
             <Text style={styles.progressValue}>{stats.xp.toLocaleString()} | {maxXP.toLocaleString()} XP</Text>
@@ -110,7 +110,7 @@ export default function AnalyticsScreen({ navigation }) {
           <Text style={styles.milestoneDesc}>
             Maintain your system operation sequence to unlock consecutive cycle achievements and increase protocol efficiency.
           </Text>
-          
+
           <View style={styles.streakRow}>
             <Text style={styles.streakLabel}>Current Streak</Text>
             <Text style={styles.streakValue}>{stats.streak}d | {Math.max(stats.streak, 7)}d</Text>
@@ -118,7 +118,7 @@ export default function AnalyticsScreen({ navigation }) {
           <View style={styles.streakBarBg}>
             <View style={[styles.streakBarFill, { width: `${Math.min(stats.streak / Math.max(stats.streak, 7), 1) * 100}%` }]} />
           </View>
-          
+
           <TouchableOpacity style={styles.reqBtn}>
             <Text style={styles.reqBtnText}>VIEW REQUIREMENTS</Text>
           </TouchableOpacity>
@@ -136,7 +136,7 @@ export default function AnalyticsScreen({ navigation }) {
               <Text style={styles.legendText}>FOCUS{'\n'}QUANTUM</Text>
             </View>
           </View>
-          
+
           <View style={styles.chartContainer}>
             <Svg width={CHART_WIDTH} height={CHART_HEIGHT}>
               {weekData.map((d, i) => {
@@ -172,7 +172,7 @@ export default function AnalyticsScreen({ navigation }) {
             <Text style={styles.viewAllText}>View All{'\n'}Artifacts</Text>
           </TouchableOpacity>
         </View>
-        
+
         <View style={styles.achievementsGrid}>
           {ACHIEVEMENTS.slice(0, 4).map((ach) => {
             const isUnlocked = unlockedAchievements.includes(ach.id);
@@ -192,7 +192,7 @@ export default function AnalyticsScreen({ navigation }) {
           })}
         </View>
 
-        <View style={{ height: 120 }} />
+        <View style={{ height: 40 }} />
       </ScrollView>
     </View>
   );
@@ -200,24 +200,24 @@ export default function AnalyticsScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Theme.bg },
-  
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 16, backgroundColor: 'rgba(19, 19, 21, 0.8)', zIndex: 10, borderBottomWidth: 1, borderBottomColor: Theme.border },
+
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 16, backgroundColor: '#0A0A0B', zIndex: 10, borderBottomWidth: 1, borderBottomColor: Theme.border },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   headerTitle: { fontSize: 20, color: Theme.onSurface, fontWeight: '300', letterSpacing: 4 },
   profileBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: Theme.surfaceHighest, borderWidth: 1, borderColor: 'rgba(71,70,74,0.3)', overflow: 'hidden' },
   profileImg: { width: '100%', height: '100%' },
 
-  scroll: { paddingHorizontal: 24, paddingTop: 32 },
+  scroll: { paddingHorizontal: 24, paddingTop: 32, paddingBottom: 40 },
 
   statusSection: { marginBottom: 36 },
   statusLabel: { fontSize: 9, color: Theme.onSurfaceVariant, fontWeight: '700', letterSpacing: 1.5, marginBottom: 8 },
   levelText: { fontSize: 32, color: Theme.onSurface, fontWeight: '300', fontStyle: 'italic', letterSpacing: -1, marginBottom: -4 },
   titleText: { fontSize: 36, color: Theme.onSurface, fontWeight: '800', fontStyle: 'italic', letterSpacing: -1, marginBottom: 16 },
-  
+
   hoursRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginBottom: 28 },
   hoursValue: { fontSize: 28, color: Theme.primary, fontWeight: '300', lineHeight: 32 },
   hoursLabel: { fontSize: 10, color: Theme.onSurfaceVariant, fontWeight: '700', letterSpacing: 1, paddingBottom: 6 },
-  
+
   progressRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   progressLabel: { fontSize: 9, color: Theme.onSurfaceVariant, fontWeight: '700', letterSpacing: 1 },
   progressValue: { fontSize: 10, color: Theme.primary, fontWeight: '700' },
@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
   legend: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   legendDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Theme.primary },
   legendText: { fontSize: 8, color: Theme.onSurfaceVariant, fontWeight: '600', letterSpacing: 1 },
-  
+
   chartContainer: { alignItems: 'center' },
   chartLabels: { flexDirection: 'row', gap: 8, marginTop: 16, width: CHART_WIDTH },
   chartDay: { fontSize: 9, color: Theme.onSurfaceVariant, fontWeight: '600', letterSpacing: 1, textAlign: 'center', textTransform: 'uppercase' },
@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
   galleryHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
   galleryTitle: { fontSize: 14, color: Theme.onSurface, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase', lineHeight: 18 },
   viewAllText: { fontSize: 10, color: Theme.onSurfaceVariant, fontWeight: '600', textDecorationLine: 'underline', textAlign: 'right', lineHeight: 14 },
-  
+
   achievementsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 16 },
   achCard: { width: '47%', backgroundColor: Theme.surface, borderRadius: 16, padding: 20, borderWidth: 1, borderColor: Theme.border, alignItems: 'center', marginBottom: 16 },
   achIconWrap: { width: 56, height: 56, borderRadius: 16, backgroundColor: Theme.surfaceHigh, alignItems: 'center', justifyContent: 'center', marginBottom: 16, shadowColor: Theme.primary, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 5 },

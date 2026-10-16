@@ -6,7 +6,8 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { getTasks, saveTasks, getStats, getUserProfile } from '../utils/storage';
+import { Audio } from 'expo-av';
+import { getTasks, saveTasks, getStats, saveStats, getUserProfile } from '../utils/storage';
 import { getLevelInfo } from '../constants/achievements';
 import { hapticLight, hapticMedium, hapticSuccess } from '../utils/helpers';
 
@@ -36,11 +37,14 @@ export default function TasksScreen({ navigation }) {
   const [tasks, setTasks] = useState([]);
   const [stats, setStats] = useState(null);
   const [profile, setProfile] = useState(null);
-  
+
   const [showAddModal, setShowAddModal] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskNote, setNewTaskNote] = useState('');
   const [newTaskPriority, setNewTaskPriority] = useState('MEDIUM');
+
+  const [editingTask, setEditingTask] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   useFocusEffect(useCallback(() => { loadData(); }, []));
 
@@ -61,9 +65,71 @@ export default function TasksScreen({ navigation }) {
     setNewTaskTitle(''); setNewTaskNote(''); setNewTaskPriority('MEDIUM'); setShowAddModal(false);
   };
 
+  const updateTask = async () => {
+    if (!editingTask || !newTaskTitle.trim()) return;
+    hapticMedium();
+    const updated = tasks.map(t => t.id === editingTask.id ? { ...t, title: newTaskTitle.trim(), note: newTaskNote.trim(), priority: newTaskPriority } : t);
+    await persist(updated);
+    setEditingTask(null); setNewTaskTitle(''); setNewTaskNote(''); setShowEditModal(false);
+  };
+
+  const startEdit = (task) => {
+    setEditingTask(task);
+    setNewTaskTitle(task.title);
+    setNewTaskNote(task.note || '');
+    setNewTaskPriority(task.priority);
+    setShowEditModal(true);
+  };
+
+  const playCelebrationSound = async () => {
+    try {
+      await Audio.setAudioModeAsync({
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+      }).catch(() => {});
+
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: 'https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3' },
+        { shouldPlay: true, volume: 0.6 }
+      );
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.didJustFinish) {
+          sound.unloadAsync().catch(() => {});
+        }
+      });
+    } catch (_) {
+      // Audio fallback safe for offline
+    }
+  };
+
   const toggleComplete = async (id) => {
-    hapticSuccess();
-    await persist(tasks.map((t) => t.id === id ? { ...t, completed: !t.completed, completedAt: !t.completed ? Date.now() : null } : t));
+    const task = tasks.find((t) => t.id === id);
+    if (!task) return;
+
+    const willBeCompleted = !task.completed;
+    const priorityXp = PRIORITY_STYLE[task.priority]?.xp ?? 220;
+
+    const updatedTasks = tasks.map((t) =>
+      t.id === id
+        ? { ...t, completed: willBeCompleted, completedAt: willBeCompleted ? Date.now() : null }
+        : t
+    );
+    await persist(updatedTasks);
+
+    const currentStats = stats ? { ...stats } : await getStats();
+    if (willBeCompleted) {
+      currentStats.tasksCompleted = (currentStats.tasksCompleted || 0) + 1;
+      currentStats.xp = (currentStats.xp || 0) + priorityXp;
+      hapticSuccess();
+      playCelebrationSound();
+    } else {
+      currentStats.tasksCompleted = Math.max(0, (currentStats.tasksCompleted || 0) - 1);
+      currentStats.xp = Math.max(0, (currentStats.xp || 0) - priorityXp);
+      hapticLight();
+    }
+
+    setStats(currentStats);
+    await saveStats(currentStats);
   };
 
   const deleteTask = (id) => {
@@ -84,8 +150,8 @@ export default function TasksScreen({ navigation }) {
   const renderActiveCard = ({ item }) => {
     const p = PRIORITY_STYLE[item.priority];
     return (
-      <TouchableOpacity 
-        style={styles.activeCard} 
+      <TouchableOpacity
+        style={styles.activeCard}
         onLongPress={() => deleteTask(item.id)}
         activeOpacity={0.9}
       >
@@ -106,11 +172,14 @@ export default function TasksScreen({ navigation }) {
         </View>
         <View style={styles.cardRight}>
           <Text style={styles.dueDateText}>No Due Date</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.radioBtn}
             onPress={() => toggleComplete(item.id)}
           >
-            <View style={styles.radioInner} />
+            {item.completed ? <MaterialCommunityIcons name="check" size={14} color={Theme.primary} /> : <View style={styles.radioInner} />}
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.menuBtn} onPress={() => startEdit(item)}>
+            <MaterialCommunityIcons name="pencil-outline" size={16} color={Theme.onSurfaceVariant} />
           </TouchableOpacity>
         </View>
       </TouchableOpacity>
@@ -120,8 +189,9 @@ export default function TasksScreen({ navigation }) {
   const renderArchivedCard = ({ item }) => {
     const p = PRIORITY_STYLE[item.priority];
     return (
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.archivedRow}
+        onPress={() => toggleComplete(item.id)}
         onLongPress={() => deleteTask(item.id)}
       >
         <MaterialCommunityIcons name="check-circle" size={18} color="rgba(192,193,255,0.4)" style={styles.archivedCheck} />
@@ -136,13 +206,13 @@ export default function TasksScreen({ navigation }) {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => navigation.openDrawer && navigation.openDrawer()}>
+          <TouchableOpacity onPress={() => (navigation.openDrawer ? navigation.openDrawer() : navigation.navigate('Profile'))}>
             <MaterialCommunityIcons name="menu" size={26} color={Theme.primary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>OBSIDIAN</Text>
         </View>
         <TouchableOpacity style={styles.profileBtn} onPress={() => navigation.navigate('Profile')}>
-           <Image
+          <Image
             source={{ uri: profile?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80' }}
             style={styles.profileImg}
           />
@@ -150,7 +220,7 @@ export default function TasksScreen({ navigation }) {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        
+
         {/* Operator Status */}
         <View style={styles.statusSection}>
           <View style={styles.statusRow}>
@@ -195,11 +265,11 @@ export default function TasksScreen({ navigation }) {
           </View>
         )}
 
-        <View style={{ height: 160 }} />
+        <View style={{ height: 40 }} />
       </ScrollView>
 
       {/* FAB */}
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.fab}
         activeOpacity={0.9}
         onPress={() => { hapticLight(); setShowAddModal(true); }}
@@ -213,11 +283,11 @@ export default function TasksScreen({ navigation }) {
         </LinearGradient>
       </TouchableOpacity>
 
-      {/* Add Task Modal */}
-      <Modal visible={showAddModal} transparent animationType="slide">
+      {/* Add/Edit Task Modal */}
+      <Modal visible={showAddModal || showEditModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>New Protocol Sequence</Text>
+            <Text style={styles.modalTitle}>{showEditModal ? 'Edit Protocol Sequence' : 'New Protocol Sequence'}</Text>
             <TextInput
               style={styles.input} placeholder="Sequence Title..." placeholderTextColor={Theme.onSurfaceVariant}
               value={newTaskTitle} onChangeText={setNewTaskTitle} autoFocus
@@ -243,12 +313,12 @@ export default function TasksScreen({ navigation }) {
               })}
             </View>
             <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => { setShowAddModal(false); hapticLight(); }}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => { setShowAddModal(false); setShowEditModal(false); setEditingTask(null); setNewTaskTitle(''); setNewTaskNote(''); hapticLight(); }}>
                 <Text style={styles.cancelBtnText}>Abort</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.saveBtn} onPress={addTask} activeOpacity={0.85}>
-                <LinearGradient colors={[Theme.primary, Theme.primaryVariant]} style={styles.saveBtnGrad} start={{x:0, y:0}} end={{x:1, y:1}}>
-                  <Text style={styles.saveBtnText}>Initialize</Text>
+              <TouchableOpacity style={styles.saveBtn} onPress={showEditModal ? updateTask : addTask} activeOpacity={0.85}>
+                <LinearGradient colors={[Theme.primary, Theme.primaryVariant]} style={styles.saveBtnGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+                  <Text style={styles.saveBtnText}>{showEditModal ? 'Update' : 'Initialize'}</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
@@ -261,15 +331,15 @@ export default function TasksScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Theme.bg },
-  
+
   // Header
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 16, backgroundColor: 'rgba(19, 19, 21, 0.8)', zIndex: 10, borderBottomWidth: 1, borderBottomColor: Theme.border },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 16, backgroundColor: '#0A0A0B', zIndex: 10, borderBottomWidth: 1, borderBottomColor: Theme.border },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   headerTitle: { fontSize: 20, color: Theme.onSurface, fontWeight: '300', letterSpacing: 4 },
   profileBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: Theme.surfaceHighest, borderWidth: 1, borderColor: 'rgba(71,70,74,0.3)', overflow: 'hidden' },
   profileImg: { width: '100%', height: '100%' },
 
-  scroll: { paddingHorizontal: 24, paddingTop: 32 },
+  scroll: { paddingHorizontal: 24, paddingTop: 32, paddingBottom: 40 },
 
   // Operator Status
   statusSection: { marginBottom: 40 },
@@ -286,7 +356,7 @@ const styles = StyleSheet.create({
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 20 },
   sectionTitle: { fontSize: 18, color: Theme.onSurface, fontWeight: '600', letterSpacing: -0.3 },
   sectionCount: { fontSize: 9, color: Theme.onSurfaceVariant, textTransform: 'uppercase', letterSpacing: 1.5, fontWeight: '600' },
-  
+
   // Active Tasks
   taskList: { gap: 12 },
   activeCard: { backgroundColor: Theme.surface, borderRadius: 16, padding: 20, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(71,70,74,0.1)' },
@@ -301,7 +371,8 @@ const styles = StyleSheet.create({
   xpText: { fontSize: 9, color: Theme.primary, fontWeight: '700' },
   cardRight: { alignItems: 'flex-end', justifyContent: 'space-between', height: '100%' },
   dueDateText: { fontSize: 10, color: Theme.onSurfaceVariant, marginBottom: 16 },
-  radioBtn: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: 'rgba(192,193,255,0.4)', alignItems: 'center', justifyContent: 'center', backgroundColor: Theme.surfaceHigh },
+  radioBtn: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: 'rgba(192,193,255,0.4)', alignItems: 'center', justifyContent: 'center', backgroundColor: Theme.surfaceHigh, marginBottom: 8 },
+  menuBtn: { width: 24, height: 24, alignItems: 'center', justifyContent: 'center' },
   radioInner: { width: 12, height: 12, borderRadius: 6, backgroundColor: 'transparent' },
 
   // Archived Protocols
@@ -317,7 +388,7 @@ const styles = StyleSheet.create({
   emptyText: { color: Theme.onSurfaceVariant, fontSize: 14, fontStyle: 'italic', marginTop: 20, textAlign: 'center' },
 
   // FAB
-  fab: { position: 'absolute', bottom: Platform.OS === 'ios' ? 100 : 90, right: 24, shadowColor: Theme.primaryVariant, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.6, shadowRadius: 16, elevation: 12 },
+  fab: { position: 'absolute', bottom: Platform.OS === 'ios' ? 32 : 16, right: 24, shadowColor: Theme.primaryVariant, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.6, shadowRadius: 16, elevation: 12 },
   fabGradient: { width: 64, height: 64, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
 
   // Modal

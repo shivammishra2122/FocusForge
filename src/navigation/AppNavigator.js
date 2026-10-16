@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../constants/colors';
+import { Colors, Theme } from '../constants/colors';
 
 import HomeScreen from '../screens/HomeScreen';
 import TimerScreen from '../screens/TimerScreen';
@@ -44,10 +44,10 @@ function TabBar({ state, descriptors, navigation }) {
                 <Ionicons
                   name={isFocused ? tab?.icon : `${tab?.icon}-outline`}
                   size={20}
-                  color={isFocused ? Colors.primary : Colors.textMuted}
+                  color={isFocused ? Theme.primary : Theme.onSurfaceVariant}
                 />
               </View>
-              <Text style={[styles.tabLabel, isFocused && { color: Colors.primary }]}>
+              <Text style={[styles.tabLabel, isFocused && styles.tabLabelActive]}>
                 {tab?.label}
               </Text>
             </TouchableOpacity>
@@ -101,39 +101,27 @@ export default function AppNavigator() {
 
 const styles = StyleSheet.create({
   tabBarWrapper: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
+    backgroundColor: '#0A0A0B',
+    borderTopWidth: 1,
+    borderTopColor: Theme.border,
     paddingBottom: Platform.OS === 'ios' ? 24 : 8,
-    backgroundColor: 'transparent',
   },
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: '#111113',
-    marginHorizontal: 16,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'transparent',
     paddingVertical: 8,
-    paddingHorizontal: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 20,
-    elevation: 20,
+    paddingHorizontal: 0,
   },
   tab: { flex: 1, alignItems: 'center', paddingVertical: 2 },
   tabIconWrapper: {
-    width: 42,
+    width: 44,
     height: 30,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 4,
   },
-  tabIconActive: { backgroundColor: 'rgba(99,102,241,0.15)' },
-  tabIcon: { fontSize: 18, color: Colors.textMuted, fontWeight: '600' },
-  tabLabel: { fontSize: 10, color: Colors.textMuted, fontWeight: '600', letterSpacing: 0.3 },
+  tabIconActive: { backgroundColor: 'rgba(105, 109, 248, 0.15)' },
+  tabLabel: { fontSize: 10, color: Theme.onSurfaceVariant, fontWeight: '600', letterSpacing: 0.3 },
+  tabLabelActive: { color: Theme.primary, fontWeight: '700' },
 });
-

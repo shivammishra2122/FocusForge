@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const KEYS = {
+export const KEYS = {
   USER_PROFILE: '@focusforge:user_profile',
   FOCUS_SESSIONS: '@focusforge:focus_sessions',
   TASKS: '@focusforge:tasks',
@@ -41,6 +41,37 @@ const remove = async (key) => {
   }
 };
 
+export const multiGet = async (keys) => {
+  try {
+    const pairs = await AsyncStorage.multiGet(keys);
+    const result = {};
+    for (const [key, value] of pairs) {
+      result[key] = value ? JSON.parse(value) : null;
+    }
+    return result;
+  } catch (e) {
+    console.error('Storage.multiGet error:', e);
+    return {};
+  }
+};
+
+export const multiSet = async (keyValuePairs) => {
+  try {
+    const stringified = keyValuePairs.map(([key, val]) => [key, JSON.stringify(val)]);
+    await AsyncStorage.multiSet(stringified);
+  } catch (e) {
+    console.error('Storage.multiSet error:', e);
+  }
+};
+
+export const multiRemove = async (keys) => {
+  try {
+    await AsyncStorage.multiRemove(keys);
+  } catch (e) {
+    console.error('Storage.multiRemove error:', e);
+  }
+};
+
 // ─── User Profile ─────────────────────────────────────────────────────────────
 
 export const getUserProfile = () => get(KEYS.USER_PROFILE);
@@ -69,6 +100,8 @@ export const saveFocusSession = async (session) => {
   const filtered = sessions.filter((s) => s.timestamp > cutoff);
   await set(KEYS.FOCUS_SESSIONS, filtered);
 };
+
+export const saveFocusSessions = (sessions) => set(KEYS.FOCUS_SESSIONS, sessions);
 
 // ─── Tasks ────────────────────────────────────────────────────────────────────
 
@@ -140,6 +173,8 @@ export const getUnlockedAchievements = async () => {
   return ach || [];
 };
 
+export const saveUnlockedAchievements = (achievements) => set(KEYS.ACHIEVEMENTS, achievements);
+
 export const unlockAchievement = async (id) => {
   const unlocked = await getUnlockedAchievements();
   if (!unlocked.includes(id)) {
@@ -148,6 +183,17 @@ export const unlockAchievement = async (id) => {
     return true;
   }
   return false;
+};
+
+export const batchUnlockAchievements = async (achievementIds) => {
+  const unlocked = await getUnlockedAchievements();
+  const toAdd = achievementIds.filter((id) => !unlocked.includes(id));
+  if (toAdd.length > 0) {
+    const updated = [...unlocked, ...toAdd];
+    await set(KEYS.ACHIEVEMENTS, updated);
+    return toAdd;
+  }
+  return [];
 };
 
 // ─── Active Focus Session ─────────────────────────────────────────────────
@@ -213,6 +259,8 @@ export const getStreakData = async () => {
   const data = await get(KEYS.STREAK_DATA);
   return data || {};
 };
+
+export const saveStreakData = (streakData) => set(KEYS.STREAK_DATA, streakData);
 
 export const addFocusMinutesToDate = async (date, minutes) => {
   const data = await getStreakData();

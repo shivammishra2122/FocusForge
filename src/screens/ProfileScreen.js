@@ -1,30 +1,17 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Switch, Alert, Platform, Image
+  Switch, Alert, Platform, Image, Modal, TextInput
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getUserProfile, getSettings, saveSettings, getStats, saveStats, saveUserProfile } from '../utils/storage';
 import { getLevelInfo } from '../constants/achievements';
-import { hapticLight, hapticMedium } from '../utils/helpers';
-
-// Obsidian Theme tokens
-const Theme = {
-  bg: '#131315',
-  surface: '#1b1b1d',
-  surfaceHigh: '#2a2a2c',
-  surfaceHighest: '#353437',
-  onSurface: '#e5e1e4',
-  onSurfaceVariant: '#c8c6ca',
-  primary: '#c0c1ff',
-  primaryVariant: '#696df8',
-  tertiary: '#d0bcff',
-  secondary: '#c4c1fb',
-  error: '#ffb4ab',
-  border: 'rgba(71, 70, 74, 0.15)',
-};
+import { hapticLight, hapticMedium, hapticSuccess } from '../utils/helpers';
+import { supabase } from '../config/supabase';
+import { pushLocalDataToCloud, pullCloudDataToLocal } from '../utils/cloudSync';
+import { Theme } from '../constants/colors';
 
 const SettingSwitch = ({ label, sub, value, onChange }) => (
   <View style={styles.settingRow}>
@@ -56,28 +43,64 @@ const SettingStepper = ({ label, value, onChange }) => (
 );
 
 export default function ProfileScreen({ navigation }) {
-  const [profile, setProfile] = useState({ name: '', goalHours: 2 });
+  const [profile, setProfile] = useState({ name: 'Operator', goalHours: 2 });
   const [settings, setSettings] = useState(null);
   const [stats, setStats] = useState(null);
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [isLoadingAuth, setIsLoadingAuth] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [isSyncActive, setIsSyncActive] = useState(false);
+
+  // Edit Profile Modal state
+  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editGoalHours, setEditGoalHours] = useState('2');
+
+  // Quick Menu Modal state
+  const [menuVisible, setMenuVisible] = useState(false);
 
   useFocusEffect(useCallback(() => { load(); }, []));
 
   const load = async () => {
     const [p, s, st] = await Promise.all([getUserProfile(), getSettings(), getStats()]);
     setProfile(p || { name: 'Operator', goalHours: 2 });
-    setSettings(s); setStats(st);
+    setSettings(s);
+    setStats(st);
+    
+    if (supabase) {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsSyncActive(!!session);
+    }
   };
 
   const updateSetting = async (key, value) => {
     hapticLight();
     const updated = { ...settings, [key]: value };
-    setSettings(updated); await saveSettings(updated);
+    setSettings(updated);
+    await saveSettings(updated);
   };
 
-  const updateProfile = async (key, value) => {
-    const updated = { ...profile, [key]: value };
-    setProfile(updated); await saveUserProfile(updated);
-    if (key === 'goalHours') await updateSetting('dailyGoalHours', value);
+  const openEditProfile = () => {
+    hapticLight();
+    setEditName(profile?.name || 'Operator');
+    setEditGoalHours(String(profile?.goalHours || settings?.dailyGoalHours || 2));
+    setShowEditProfileModal(true);
+  };
+
+  const handleSaveProfile = async () => {
+    const trimmedName = editName.trim() || 'Operator';
+    const hours = Math.max(1, Math.min(24, parseFloat(editGoalHours) || 2));
+    const updatedProfile = { ...profile, name: trimmedName, goalHours: hours };
+    setProfile(updatedProfile);
+    await saveUserProfile(updatedProfile);
+    if (settings) {
+      const updatedSettings = { ...settings, dailyGoalHours: hours };
+      setSettings(updatedSettings);
+      await saveSettings(updatedSettings);
+    }
+    hapticSuccess();
+    setShowEditProfileModal(false);
   };
 
   const handleReset = () => {
@@ -94,6 +117,61 @@ export default function ProfileScreen({ navigation }) {
     ]);
   };
 
+  const handleAuthAction = async (isSignUp) => {
+    if (!supabase) {
+      Alert.alert('Configuration Missing', 'Supabase credentials missing in src/config/supabase.js');
+      return;
+    }
+    
+    if (!authEmail || !authPassword) {
+      Alert.alert('Error', 'Please provide an identifier and passphrase.');
+      return;
+    }
+
+    setIsLoadingAuth(true);
+    let error = null;
+
+    if (isSignUp) {
+      const resp = await supabase.auth.signUp({ email: authEmail, password: authPassword });
+      error = resp.error;
+    } else {
+      const resp = await supabase.auth.signInWithPassword({ email: authEmail, password: authPassword });
+      error = resp.error;
+    }
+
+    setIsLoadingAuth(false);
+
+    if (error) {
+      Alert.alert('Authentication Failed', error.message || 'Check connection.');
+      hapticLight();
+    } else {
+      setIsSyncActive(true);
+      setShowAuthModal(false);
+      
+      if (isSignUp) {
+        await pushLocalDataToCloud();
+      } else {
+        await pullCloudDataToLocal();
+        await load();
+      }
+
+      hapticSuccess();
+      Alert.alert('Link Established', 'Terminal synchronized with the cloud backend.');
+    }
+  };
+
+  const handleSignOut = async () => {
+    if (supabase) await supabase.auth.signOut();
+    setIsSyncActive(false);
+    hapticLight();
+  };
+
+  const quickNav = (screenName, params) => {
+    hapticLight();
+    setMenuVisible(false);
+    navigation.navigate(screenName, params);
+  };
+
   if (!settings || !stats) return null;
 
   return (
@@ -101,18 +179,156 @@ export default function ProfileScreen({ navigation }) {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => navigation.openDrawer && navigation.openDrawer()}>
+          <TouchableOpacity
+            style={styles.menuBtn}
+            onPress={() => {
+              hapticLight();
+              setMenuVisible(true);
+            }}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
             <MaterialCommunityIcons name="menu" size={26} color={Theme.primary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>OBSIDIAN</Text>
         </View>
-        <TouchableOpacity style={styles.profileBtn}>
-           <Image source={{ uri: profile?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80' }} style={styles.profileImg} />
+        <TouchableOpacity style={styles.profileBtn} onPress={openEditProfile}>
+          <Image
+            source={{ uri: profile?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80' }}
+            style={styles.profileImg}
+          />
         </TouchableOpacity>
       </View>
 
+      {/* Quick Action Sheet Modal */}
+      <Modal
+        visible={menuVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setMenuVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.sheetOverlay}
+          activeOpacity={1}
+          onPress={() => setMenuVisible(false)}
+        >
+          <View style={styles.sheetContent}>
+            <View style={styles.sheetHeader}>
+              <View style={styles.sheetDragBar} />
+              <Text style={styles.sheetTitle}>NAVIGATION PROTOCOL</Text>
+            </View>
+
+            <TouchableOpacity style={styles.sheetItem} onPress={() => quickNav('Home')}>
+              <MaterialCommunityIcons name="home-outline" size={22} color={Theme.primary} />
+              <View style={styles.sheetItemTextWrap}>
+                <Text style={styles.sheetItemTitle}>Home Command Center</Text>
+                <Text style={styles.sheetItemSub}>Overview of current focus and daily quests</Text>
+              </View>
+              <MaterialCommunityIcons name="chevron-right" size={20} color={Theme.onSurfaceVariant} />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.sheetItem} onPress={() => quickNav('Tasks')}>
+              <MaterialCommunityIcons name="format-list-checks" size={22} color={Theme.secondary} />
+              <View style={styles.sheetItemTextWrap}>
+                <Text style={styles.sheetItemTitle}>Protocol Objectives (Tasks)</Text>
+                <Text style={styles.sheetItemSub}>Manage active queues and mission tasks</Text>
+              </View>
+              <MaterialCommunityIcons name="chevron-right" size={20} color={Theme.onSurfaceVariant} />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.sheetItem} onPress={() => quickNav('Achievements')}>
+              <MaterialCommunityIcons name="trophy-outline" size={22} color={Theme.tertiary} />
+              <View style={styles.sheetItemTextWrap}>
+                <Text style={styles.sheetItemTitle}>Achievements Gallery</Text>
+                <Text style={styles.sheetItemSub}>Review unlocked honors and system rank</Text>
+              </View>
+              <MaterialCommunityIcons name="chevron-right" size={20} color={Theme.onSurfaceVariant} />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.sheetItem} onPress={() => quickNav('BlockedApps')}>
+              <MaterialCommunityIcons name="shield-lock-outline" size={22} color={Theme.primaryVariant} />
+              <View style={styles.sheetItemTextWrap}>
+                <Text style={styles.sheetItemTitle}>Deep Work App Shield</Text>
+                <Text style={styles.sheetItemSub}>Control blocked endpoints and distractions</Text>
+              </View>
+              <MaterialCommunityIcons name="chevron-right" size={20} color={Theme.onSurfaceVariant} />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.sheetItem} onPress={() => quickNav('Analytics')}>
+              <MaterialCommunityIcons name="chart-box-outline" size={22} color={Theme.onSurface} />
+              <View style={styles.sheetItemTextWrap}>
+                <Text style={styles.sheetItemTitle}>Telemetry & Focus Analytics</Text>
+                <Text style={styles.sheetItemSub}>Examine deep work session distributions</Text>
+              </View>
+              <MaterialCommunityIcons name="chevron-right" size={20} color={Theme.onSurfaceVariant} />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.sheetCloseBtn} onPress={() => setMenuVisible(false)}>
+              <Text style={styles.sheetCloseText}>CLOSE MENU</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Edit Profile Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={showEditProfileModal}
+        onRequestClose={() => setShowEditProfileModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <MaterialCommunityIcons name="account-edit-outline" size={48} color={Theme.primary} style={{ marginBottom: 16 }} />
+            <Text style={styles.modalTitle}>Edit Protocol Profile</Text>
+            <Text style={styles.modalBody}>Update your operator identifier and daily focus target.</Text>
+
+            <View style={{ width: '100%', marginBottom: 20 }}>
+              <Text style={styles.editInputLabel}>OPERATOR IDENTIFIER</Text>
+              <View style={styles.authInputWrapper}>
+                <TextInput
+                  style={styles.authInput}
+                  placeholder="Operator Name"
+                  placeholderTextColor={Theme.onSurfaceVariant}
+                  value={editName}
+                  onChangeText={setEditName}
+                  autoCapitalize="words"
+                />
+              </View>
+
+              <Text style={[styles.editInputLabel, { marginTop: 12 }]}>DAILY FOCUS TARGET (HOURS)</Text>
+              <View style={styles.hoursRow}>
+                {['1', '2', '3', '4', '5', '6', '8'].map((h) => (
+                  <TouchableOpacity
+                    key={h}
+                    style={[
+                      styles.hourBtn,
+                      editGoalHours === h && { backgroundColor: Theme.primaryVariant, borderColor: Theme.primary },
+                    ]}
+                    onPress={() => {
+                      hapticLight();
+                      setEditGoalHours(h);
+                    }}
+                  >
+                    <Text style={[styles.hourBtnText, editGoalHours === h && { color: '#000', fontWeight: '800' }]}>
+                      {h}h
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <TouchableOpacity style={styles.modalActionBtn} onPress={handleSaveProfile}>
+              <Text style={styles.modalActionText}>COMMIT CHANGES</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setShowEditProfileModal(false)}>
+              <Text style={styles.modalCancelText}>CANCEL</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        
         {/* Screen Title */}
         <View style={styles.titleArea}>
           <Text style={styles.pageTitle}>Settings</Text>
@@ -122,48 +338,127 @@ export default function ProfileScreen({ navigation }) {
         {/* User Profile Card */}
         <View style={styles.userCard}>
           <View style={styles.userCardTop}>
-             <Image source={{ uri: profile?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80' }} style={styles.cardAvatar} />
-             <View style={styles.userInfo}>
-               <Text style={styles.userName}>{profile.name || 'Operator'}</Text>
-               <Text style={styles.userID}>Protocol ID: {stats.xp}-X</Text>
-               <View style={styles.userStats}>
-                 <View style={styles.statPill}>
-                   <Text style={styles.statPillLabel}>STREAK</Text>
-                   <Text style={styles.statPillValue}>{stats.streak}</Text>
-                 </View>
-                 <View style={styles.statPill}>
-                   <Text style={styles.statPillLabel}>SESSIONS</Text>
-                   <Text style={styles.statPillValue}>{stats.totalSessions}</Text>
-                 </View>
-               </View>
-             </View>
+            <Image
+              source={{ uri: profile?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80' }}
+              style={styles.cardAvatar}
+            />
+            <View style={styles.userInfo}>
+              <Text style={styles.userName}>{profile.name || 'Operator'}</Text>
+              <Text style={styles.userID}>Protocol ID: {stats.xp}-X • Target: {profile.goalHours || 2}h/day</Text>
+              <View style={styles.userStats}>
+                <View style={styles.statPill}>
+                  <Text style={styles.statPillLabel}>STREAK</Text>
+                  <Text style={styles.statPillValue}>{stats.streak}</Text>
+                </View>
+                <View style={styles.statPill}>
+                  <Text style={styles.statPillLabel}>SESSIONS</Text>
+                  <Text style={styles.statPillValue}>{stats.totalSessions}</Text>
+                </View>
+              </View>
+            </View>
           </View>
           <View style={styles.userCardBottom}>
             <View>
               <Text style={styles.activeLabel}>ACTIVE SINCE</Text>
               <Text style={styles.activeDate}>System Init</Text>
             </View>
-            <TouchableOpacity style={styles.editBtn}>
+            <TouchableOpacity style={styles.editBtn} onPress={openEditProfile} activeOpacity={0.7}>
               <Text style={styles.editBtnText}>EDIT PROFILE</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Membership Status Placeholder */}
+        {/* Auth Modal */}
+        <Modal
+          animationType="fade"
+          transparent={true}
+          visible={showAuthModal}
+          onRequestClose={() => setShowAuthModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <MaterialCommunityIcons name="cloud-lock-outline" size={48} color={Theme.primary} style={{ marginBottom: 16 }} />
+              <Text style={styles.modalTitle}>Authenticate</Text>
+              <Text style={styles.modalBody}>Link your terminal to the cloud database to preserve your configurations and protocols.</Text>
+              
+              <View style={{ width: '100%', marginBottom: 24 }}>
+                <View style={styles.authInputWrapper}>
+                  <TextInput
+                    style={styles.authInput}
+                    placeholder="IDENTIFIER (EMAIL)"
+                    placeholderTextColor={Theme.onSurfaceVariant}
+                    value={authEmail}
+                    onChangeText={setAuthEmail}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                  />
+                </View>
+                <View style={styles.authInputWrapper}>
+                  <TextInput
+                    style={styles.authInput}
+                    placeholder="PASSPHRASE"
+                    placeholderTextColor={Theme.onSurfaceVariant}
+                    value={authPassword}
+                    onChangeText={setAuthPassword}
+                    secureTextEntry
+                    autoCapitalize="none"
+                  />
+                </View>
+              </View>
+
+              <View style={{ width: '100%', marginBottom: 12 }}>
+                <TouchableOpacity 
+                  style={[styles.modalActionBtn, isLoadingAuth && { opacity: 0.5 }]} 
+                  onPress={() => handleAuthAction(false)}
+                  disabled={isLoadingAuth}
+                >
+                  <Text style={styles.modalActionText}>{isLoadingAuth ? "PROCESSING..." : "INITIALIZE LINK"}</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.modalActionBtn, { backgroundColor: 'transparent', borderWidth: 1, borderColor: Theme.primaryVariant }, isLoadingAuth && { opacity: 0.5 }]} 
+                  onPress={() => handleAuthAction(true)}
+                  disabled={isLoadingAuth}
+                >
+                  <Text style={[styles.modalActionText, { color: Theme.primaryVariant }]}>CREATE NEW LINK</Text>
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setShowAuthModal(false)}>
+                <Text style={styles.modalCancelText}>CANCEL</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Cloud Sync Status */}
         <View style={styles.membershipSection}>
           <View style={styles.memHeader}>
-            <MaterialCommunityIcons name="lock" size={12} color={Theme.primary} />
-            <Text style={styles.memHeaderTitle}>MEMBERSHIP STATUS</Text>
+            <MaterialCommunityIcons name={isSyncActive ? "cloud-check" : "cloud-off-outline"} size={14} color={isSyncActive ? Theme.primary : Theme.onSurfaceVariant} />
+            <Text style={styles.memHeaderTitle}>CLOUD SYNC LAYER</Text>
           </View>
-          <Text style={styles.memTitle}>Obsidian Pro</Text>
-          <Text style={styles.memSub}>Lifetime License</Text>
+          <Text style={styles.memTitle}>{isSyncActive ? "Active" : "Offline"}</Text>
+          <Text style={styles.memSub}>{isSyncActive ? "Data secured & synchronized." : "Local storage only. Device failure risks data loss."}</Text>
           <View style={styles.memBarBg}>
             <View style={[styles.memBarFill, { width: '100%' }]} />
           </View>
-          <Text style={styles.memProgress}>SYNC SECURED</Text>
-          <TouchableOpacity style={styles.manageBtn}>
-            <LinearGradient colors={[Theme.primaryVariant, Theme.primary]} style={styles.manageBtnGrad} start={{x:0, y:0}} end={{x:1, y:1}}>
-              <Text style={styles.manageBtnText}>MANAGE PLAN</Text>
+          <Text style={styles.memProgress}>{isSyncActive ? "SYNC SECURED" : "SYNC DISABLED"}</Text>
+          <TouchableOpacity 
+            style={styles.manageBtn} 
+            onPress={() => {
+              if (isSyncActive) {
+                handleSignOut();
+              } else {
+                if (!supabase) {
+                  Alert.alert('System Offline', 'Supabase keys missing. Update src/config/supabase.js to enable cloud sync.');
+                } else {
+                  setShowAuthModal(true);
+                }
+              }
+            }}
+          >
+            <LinearGradient colors={isSyncActive ? [Theme.surfaceHigh, Theme.surfaceHigh] : [Theme.primaryVariant, Theme.primary]} style={styles.manageBtnGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+              <Text style={[styles.manageBtnText, isSyncActive && { color: Theme.error }]}>{isSyncActive ? "DISCONNECT CLOUD" : "CONNECT CLOUD"}</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -236,7 +531,7 @@ export default function ProfileScreen({ navigation }) {
           <Text style={styles.dangerBtnText}>ERASE SYSTEM RECORD</Text>
         </TouchableOpacity>
 
-        <View style={{ height: 120 }} />
+        <View style={{ height: 40 }} />
       </ScrollView>
     </View>
   );
@@ -244,15 +539,35 @@ export default function ProfileScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Theme.bg },
-  
+
   // Header
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 16, backgroundColor: 'rgba(19, 19, 21, 0.8)', zIndex: 10, borderBottomWidth: 1, borderBottomColor: Theme.border },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: 16,
+    backgroundColor: '#0A0A0B',
+    zIndex: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: Theme.border,
+  },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  menuBtn: { padding: 4 },
   headerTitle: { fontSize: 20, color: Theme.onSurface, fontWeight: '300', letterSpacing: 4 },
-  profileBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: Theme.surfaceHighest, borderWidth: 1, borderColor: 'rgba(71,70,74,0.3)', overflow: 'hidden' },
+  profileBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: Theme.surfaceHighest,
+    borderWidth: 1,
+    borderColor: 'rgba(71,70,74,0.3)',
+    overflow: 'hidden',
+  },
   profileImg: { width: '100%', height: '100%' },
 
-  scroll: { paddingHorizontal: 24, paddingTop: 32 },
+  scroll: { paddingHorizontal: 24, paddingTop: 32, paddingBottom: 40 },
 
   titleArea: { marginBottom: 32 },
   pageTitle: { fontSize: 36, fontWeight: '700', color: Theme.onSurface, letterSpacing: -1, marginBottom: 4 },
@@ -274,6 +589,19 @@ const styles = StyleSheet.create({
   editBtn: { backgroundColor: Theme.surfaceHigh, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: Theme.border },
   editBtnText: { color: Theme.onSurface, fontSize: 10, fontWeight: '700', letterSpacing: 1 },
 
+  // Edit Profile and Auth Modals
+  editInputLabel: { fontSize: 10, color: Theme.onSurfaceVariant, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 },
+  hoursRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  hourBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Theme.border,
+    backgroundColor: Theme.surfaceHigh,
+  },
+  hourBtnText: { color: Theme.onSurface, fontWeight: '600', fontSize: 13 },
+
   membershipSection: { marginBottom: 40 },
   memHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
   memHeaderTitle: { fontSize: 10, color: Theme.onSurfaceVariant, fontWeight: '700', letterSpacing: 1.5 },
@@ -290,7 +618,7 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 14, color: Theme.onSurface, fontWeight: '600', letterSpacing: 0.5 },
   sectionTitleError: { fontSize: 14, color: Theme.error, fontWeight: '600', letterSpacing: 0.5 },
   settingsGroup: { backgroundColor: Theme.surface, borderRadius: 16, borderWidth: 1, borderColor: Theme.border, marginBottom: 32, overflow: 'hidden' },
-  
+
   settingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 18 },
   settingLeft: { flex: 1, paddingRight: 16 },
   settingLabel: { fontSize: 14, color: Theme.onSurface, fontWeight: '600', marginBottom: 4 },
@@ -312,4 +640,74 @@ const styles = StyleSheet.create({
   dangerSub: { fontSize: 12, color: Theme.onSurfaceVariant, marginBottom: 16 },
   dangerBtn: { width: '100%', backgroundColor: 'transparent', borderRadius: 8, paddingVertical: 16, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255, 180, 171, 0.3)' },
   dangerBtnText: { color: Theme.error, fontSize: 11, fontWeight: '700', letterSpacing: 1 },
+
+  // Common Modal Styles
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  modalCard: { backgroundColor: Theme.surface, borderRadius: 24, padding: 32, width: '100%', alignItems: 'center', borderWidth: 1, borderColor: Theme.border },
+  modalTitle: { fontSize: 22, fontWeight: '700', color: Theme.onSurface, marginBottom: 12 },
+  modalBody: { fontSize: 13, color: Theme.onSurfaceVariant, textAlign: 'center', lineHeight: 20, marginBottom: 24 },
+  authInputWrapper: { width: '100%', backgroundColor: Theme.surfaceHigh, borderRadius: 12, borderWidth: 1, borderColor: Theme.border, marginBottom: 12 },
+  authInput: { color: Theme.onSurface, padding: 16, fontSize: 13, fontWeight: '600', letterSpacing: 0.5 },
+  modalActionBtn: { width: '100%', paddingVertical: 16, borderRadius: 12, backgroundColor: Theme.primaryVariant, alignItems: 'center', marginBottom: 12 },
+  modalActionText: { color: '#000', fontWeight: '800', fontSize: 11, letterSpacing: 1.5 },
+  modalCancelBtn: { width: '100%', paddingVertical: 14, alignItems: 'center' },
+  modalCancelText: { color: Theme.onSurfaceVariant, fontWeight: '700', fontSize: 11, letterSpacing: 1.5 },
+
+  // Action Sheet Modal
+  sheetOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'flex-end',
+  },
+  sheetContent: {
+    backgroundColor: Theme.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+    borderTopWidth: 1,
+    borderTopColor: Theme.border,
+  },
+  sheetHeader: { alignItems: 'center', marginBottom: 20 },
+  sheetDragBar: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Theme.surfaceHighest,
+    marginBottom: 12,
+  },
+  sheetTitle: {
+    fontSize: 11,
+    color: Theme.onSurfaceVariant,
+    fontWeight: '700',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
+  sheetItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(71, 70, 74, 0.1)',
+    gap: 16,
+  },
+  sheetItemTextWrap: { flex: 1 },
+  sheetItemTitle: { fontSize: 14, color: Theme.onSurface, fontWeight: '600' },
+  sheetItemSub: { fontSize: 11, color: Theme.onSurfaceVariant, marginTop: 2 },
+  sheetCloseBtn: {
+    marginTop: 18,
+    paddingVertical: 14,
+    backgroundColor: Theme.surfaceHigh,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Theme.border,
+  },
+  sheetCloseText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Theme.onSurfaceVariant,
+    letterSpacing: 1.5,
+  },
 });

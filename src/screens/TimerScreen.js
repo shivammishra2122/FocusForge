@@ -12,6 +12,7 @@ import { getStats, getUserProfile, getSettings, addSessionToStats, saveFocusSess
 import { formatTime, formatMinutes, hapticLight, hapticMedium, hapticSuccess, scheduleBreakReminder, getTodayKey } from '../utils/helpers';
 import { CATEGORIES, getCategoryById } from '../constants/categories';
 import { SOUNDS, getSoundById } from '../constants/sounds';
+import { calculateFocusEfficiency, calculateFocusIndex } from '../utils/focusMetrics';
 
 const { width } = Dimensions.get('window');
 
@@ -51,13 +52,40 @@ export default function TimerScreen({ navigation }) {
   const [showReflectionModal, setShowReflectionModal] = useState(false);
   const [reflectionNote, setReflectionNote] = useState('');
   const [sessionDataToSave, setSessionDataToSave] = useState(null);
-  
+
   const [selectedSound, setSelectedSound] = useState(SOUNDS[0].id);
   const [soundObject, setSoundObject] = useState(null);
-  
+  const soundRef = useRef(null);
+
   const intervalRef = useRef(null);
 
-  useFocusEffect(useCallback(() => { loadData(); }, []));
+  const stopSound = useCallback(async () => {
+    const currentSound = soundRef.current;
+    soundRef.current = null;
+    setSoundObject(null);
+    if (currentSound) {
+      try {
+        const status = await currentSound.getStatusAsync().catch(() => null);
+        if (status && status.isLoaded) {
+          await currentSound.stopAsync().catch(() => {});
+          await currentSound.unloadAsync().catch(() => {});
+        } else if (status) {
+          await currentSound.unloadAsync().catch(() => {});
+        }
+      } catch (e) {
+        // Safe catch prevents unhandled promise rejections
+      }
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+      return () => {
+        stopSound();
+      };
+    }, [stopSound])
+  );
 
   const loadData = async () => {
     const active = await getFocusSessionActive();
@@ -73,7 +101,7 @@ export default function TimerScreen({ navigation }) {
         return;
       }
     }
-    
+
     const [p, s] = await Promise.all([getUserProfile(), getSettings()]);
     setProfile(p);
     setSettings(s);
@@ -97,33 +125,65 @@ export default function TimerScreen({ navigation }) {
     setTotalSeconds(secs);
   };
 
-  const loadAndPlaySound = async (soundId = selectedSound) => {
+  const configureAudioMode = async () => {
     try {
-      if (soundObject) { await soundObject.unloadAsync(); setSoundObject(null); }
-      const s = getSoundById(soundId);
-      if (!s || !s.url) return;
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: s.url }, { shouldPlay: true, isLooping: true, volume: 0.5 }
-      );
-      setSoundObject(sound);
-    } catch (err) {}
+      await Audio.setAudioModeAsync({
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: true,
+        shouldDuckAndroid: true,
+      });
+    } catch (e) {
+      // Audio mode config failure is non-fatal
+    }
   };
 
-  const stopSound = async () => {
-    if (soundObject) {
-      try { await soundObject.stopAsync(); await soundObject.unloadAsync(); setSoundObject(null); } catch (e) {}
+  const loadAndPlaySound = async (soundId = selectedSound) => {
+    await configureAudioMode();
+
+    if (soundRef.current) {
+      try {
+        await soundRef.current.stopAsync().catch(() => {});
+        await soundRef.current.unloadAsync().catch(() => {});
+      } catch (_) {}
+      soundRef.current = null;
+      setSoundObject(null);
+    }
+
+    const s = getSoundById(soundId);
+    if (!s || !s.url) return;
+
+    try {
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: s.url },
+        { shouldPlay: true, isLooping: true, volume: 0.5 }
+      );
+      soundRef.current = sound;
+      setSoundObject(sound);
+    } catch (err) {
+      console.warn('Ambient sound playback unavailable:', err?.message || err);
+      // Timer continues working smoothly even if audio stream fails
     }
   };
 
   const toggleSoundPlay = async (play) => {
-    if (soundObject) {
-      try { if (play) await soundObject.playAsync(); else await soundObject.pauseAsync(); } catch (e) {}
+    if (soundRef.current) {
+      try {
+        const status = await soundRef.current.getStatusAsync().catch(() => null);
+        if (status && status.isLoaded) {
+          if (play) await soundRef.current.playAsync().catch(() => {});
+          else await soundRef.current.pauseAsync().catch(() => {});
+        }
+      } catch (e) {}
     } else if (play && selectedSound !== 'NONE') {
-      await loadAndPlaySound();
+      await loadAndPlaySound(selectedSound);
     }
   };
 
-  useEffect(() => { return () => { stopSound(); }; }, []);
+  useEffect(() => {
+    return () => {
+      stopSound();
+    };
+  }, [stopSound]);
 
   const start = () => {
     if (mode === TIMER_MODES.POMODORO || mode === TIMER_MODES.CUSTOM) {
@@ -175,7 +235,7 @@ export default function TimerScreen({ navigation }) {
     setShowReflectionModal(false); setReflectionNote('');
 
     if (settings?.notifications) { await scheduleBreakReminder(sMode === TIMER_MODES.POMODORO ? settings?.pomodoroShortBreak : 0); }
-    
+
     if (sMode === TIMER_MODES.POMODORO) {
       const nextRound = pomodoroRound + 1;
       if (nextRound > (settings?.pomodoroRounds || 4)) {
@@ -207,27 +267,27 @@ export default function TimerScreen({ navigation }) {
     return () => clearInterval(intervalRef.current);
   }, [isRunning]);
 
-  // Pseudorandom stats for active session (based on round/elapsed)
-  const effScore = Math.min(100, Math.max(82, 94 - Math.floor(sessionElapsed / 600) + (pomodoroRound * 2)));
-  const focusIndex = (0.82 + (pomodoroRound * 0.05) - (Math.floor(sessionElapsed / 1200) * 0.02)).toFixed(2);
+  // Professional focus metrics
+  const effScore = calculateFocusEfficiency(sessionElapsed, totalSeconds, false);
+  const focusIndex = calculateFocusIndex(sessionElapsed, totalSeconds);
 
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => navigation.openDrawer && navigation.openDrawer()}>
+          <TouchableOpacity onPress={() => (navigation.openDrawer ? navigation.openDrawer() : navigation.navigate('Profile'))}>
             <MaterialCommunityIcons name="menu" size={26} color={Theme.primary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>OBSIDIAN</Text>
         </View>
         <TouchableOpacity style={styles.profileBtn} onPress={() => navigation.navigate('Profile')}>
-           <Image source={{ uri: profile?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80' }} style={styles.profileImg} />
+          <Image source={{ uri: profile?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80' }} style={styles.profileImg} />
         </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
-        
+
         {/* Current Mission */}
         <View style={styles.missionWrapper}>
           <Text style={styles.labelMuted}>CURRENT MISSION</Text>
@@ -237,7 +297,7 @@ export default function TimerScreen({ navigation }) {
         {/* Main Timer Card */}
         <View style={styles.timerCard}>
           <Text style={styles.timeText}>{formatTime(secondsLeft)}</Text>
-          
+
           <View style={styles.statusBadge}>
             <View style={[styles.statusDot, { backgroundColor: isRunning ? Theme.primary : isPaused ? Theme.error : Theme.onSurfaceVariant }]} />
             <Text style={styles.statusText}>
@@ -271,7 +331,7 @@ export default function TimerScreen({ navigation }) {
           >
             <LinearGradient
               colors={isRunning ? [Theme.tertiary, Theme.primary] : [Theme.primaryVariant, Theme.primary]}
-              start={{x: 0, y: 0}} end={{x: 1, y: 1}}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               style={styles.actionGradient}
             >
               <Text style={styles.actionText}>
@@ -282,7 +342,7 @@ export default function TimerScreen({ navigation }) {
           </TouchableOpacity>
 
           {/* Secondary Action */}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.secondaryBtn}
             onPress={isRunning || isPaused ? reset : () => switchMode(TIMER_MODES.POMODORO)}
           >
@@ -296,7 +356,7 @@ export default function TimerScreen({ navigation }) {
         {!isRunning && !isPaused && (
           <View style={styles.configSection}>
             <Text style={styles.configLabel}>PARAMETERS</Text>
-            
+
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.configScroll}>
               {Object.values(TIMER_MODES).map((m) => (
                 <TouchableOpacity
@@ -339,6 +399,7 @@ export default function TimerScreen({ navigation }) {
           </View>
         )}
 
+        <View style={{ height: 40 }} />
       </ScrollView>
 
       {/* Custom Duration Modal */}
@@ -387,25 +448,22 @@ export default function TimerScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Theme.bg },
-  
+
   // Header
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 16, backgroundColor: 'rgba(19, 19, 21, 0.8)', zIndex: 10, borderBottomWidth: 1, borderBottomColor: Theme.border },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 16, backgroundColor: '#0A0A0B', zIndex: 10, borderBottomWidth: 1, borderBottomColor: Theme.border },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   headerTitle: { fontSize: 20, color: Theme.onSurface, fontWeight: '300', letterSpacing: 4 },
   profileBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: Theme.surfaceHighest, borderWidth: 1, borderColor: 'rgba(71,70,74,0.3)', overflow: 'hidden' },
   profileImg: { width: '100%', height: '100%' },
 
-  scroll: { paddingHorizontal: 24, paddingVertical: 32, alignItems: 'center' },
-
-  // Mission Title
-  missionWrapper: { alignItems: 'center', marginBottom: 24 },
-  labelMuted: { fontSize: 10, color: Theme.onSurfaceVariant, textTransform: 'uppercase', letterSpacing: 2, fontWeight: '600', marginBottom: 6 },
-  missionTitle: { fontSize: 24, fontWeight: '700', color: Theme.onSurface, textAlign: 'center', letterSpacing: -0.5 },
+  scroll: { paddingHorizontal: 24, paddingVertical: 16, alignItems: 'center', paddingBottom: 40 },
+  labelMuted: { fontSize: 8, color: Theme.onSurfaceVariant, textTransform: 'uppercase', letterSpacing: 1.5, fontWeight: '600', marginBottom: 4 },
+  missionTitle: { fontSize: 20, fontWeight: '700', color: Theme.onSurface, textAlign: 'center', letterSpacing: -0.5 },
 
   // Timer Card
-  timerCard: { width: '100%', backgroundColor: Theme.surface, borderRadius: 24, padding: 32, borderWidth: 1, borderColor: Theme.border, alignItems: 'center' },
-  timeText: { fontSize: width * 0.22, fontWeight: '200', color: Theme.primary, letterSpacing: -4, lineHeight: width * 0.25 },
-  
+  timerCard: { width: '100%', backgroundColor: Theme.surface, borderRadius: 24, padding: 24, borderWidth: 1, borderColor: Theme.border, alignItems: 'center' },
+  timeText: { fontSize: width * 0.20, fontWeight: '200', color: Theme.primary, letterSpacing: -3, lineHeight: width * 0.22 },
+
   statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 8, marginVertical: 16, backgroundColor: 'rgba(192,193,255,0.05)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 24 },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
   statusText: { fontSize: 10, color: Theme.onSurfaceVariant, fontWeight: '700', letterSpacing: 1.5 },

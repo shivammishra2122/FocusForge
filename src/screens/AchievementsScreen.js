@@ -6,16 +6,16 @@ import {
   ScrollView,
   TouchableOpacity,
   Platform,
-  Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
-import { Colors } from '../constants/colors';
+import { Ionicons } from '@expo/vector-icons';
+import { Colors, Theme } from '../constants/colors';
 import { ACHIEVEMENTS, getLevelInfo } from '../constants/achievements';
 import { getStats, getUnlockedAchievements } from '../utils/storage';
 import { hapticLight } from '../utils/helpers';
 
-export default function AchievementsScreen() {
+export default function AchievementsScreen({ navigation }) {
   const [unlockedIds, setUnlockedIds] = useState([]);
   const [stats, setStats] = useState(null);
   const [activeFilter, setActiveFilter] = useState('All');
@@ -28,7 +28,7 @@ export default function AchievementsScreen() {
 
   const load = async () => {
     const [unlocked, s] = await Promise.all([getUnlockedAchievements(), getStats()]);
-    setUnlockedIds(unlocked);
+    setUnlockedIds(unlocked || []);
     setStats(s);
   };
 
@@ -47,7 +47,7 @@ export default function AchievementsScreen() {
       <View style={[styles.card, isUnlocked && styles.cardUnlocked]}>
         {isUnlocked && (
           <LinearGradient
-            colors={[Colors.primary + '20', Colors.accent + '10']}
+            colors={[Colors.primary + '20', Colors.secondary + '12']}
             style={StyleSheet.absoluteFill}
           />
         )}
@@ -63,7 +63,7 @@ export default function AchievementsScreen() {
           <Text style={[styles.cardTitle, !isUnlocked && styles.lockedText]}>{achievement.title}</Text>
           <Text style={[styles.cardDesc, !isUnlocked && styles.lockedText]}>{achievement.description}</Text>
           <View style={styles.xpRow}>
-            <Text style={[styles.xpText, isUnlocked ? { color: Colors.accentWarm } : { color: Colors.textMuted }]}>
+            <Text style={[styles.xpText, isUnlocked ? { color: Colors.warning } : { color: Colors.textMuted }]}>
               +{achievement.xp} XP
             </Text>
             {isUnlocked && <Text style={styles.unlockedLabel}>UNLOCKED</Text>}
@@ -83,6 +83,26 @@ export default function AchievementsScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
+          <View style={styles.headerTop}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => {
+                hapticLight();
+                if (navigation?.canGoBack && navigation.canGoBack()) {
+                  navigation.goBack();
+                } else if (navigation?.navigate) {
+                  navigation.navigate('MainTabs');
+                }
+              }}
+              activeOpacity={0.7}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
+              <Ionicons name="close" size={22} color={Theme.onSurface} />
+            </TouchableOpacity>
+            <View style={styles.headerBadge}>
+              <Text style={styles.headerBadgeText}>HALL OF VALOR</Text>
+            </View>
+          </View>
           <Text style={styles.headerTitle}>Achievements</Text>
           <Text style={styles.headerSub}>
             {unlockedIds.length} / {ACHIEVEMENTS.length} unlocked
@@ -128,7 +148,7 @@ export default function AchievementsScreen() {
               style={[styles.filterBtn, activeFilter === f && { backgroundColor: Colors.primary + '25', borderColor: Colors.primary }]}
               onPress={() => { setActiveFilter(f); hapticLight(); }}
             >
-              <Text style={[styles.filterText, activeFilter === f && { color: Colors.primary }]}>{f}</Text>
+              <Text style={[styles.filterText, activeFilter === f && { color: Colors.primaryLight }]}>{f}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -149,6 +169,26 @@ export default function AchievementsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, paddingTop: Platform.OS === 'ios' ? 60 : 40 },
   header: { paddingHorizontal: 24, marginBottom: 20 },
+  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Theme.surfaceHigh,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Theme.border,
+  },
+  headerBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    backgroundColor: 'rgba(192, 193, 255, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(192, 193, 255, 0.2)',
+  },
+  headerBadgeText: { fontSize: 9, color: Theme.primary, fontWeight: '700', letterSpacing: 1.5 },
   headerTitle: { fontSize: 28, fontWeight: '800', color: Colors.textPrimary },
   headerSub: { fontSize: 13, color: Colors.textMuted, marginTop: 2 },
   levelBanner: { marginHorizontal: 24, borderRadius: 24, padding: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, overflow: 'hidden' },
@@ -170,15 +210,15 @@ const styles = StyleSheet.create({
   cardUnlocked: { borderColor: Colors.primary + '50' },
   iconContainer: { width: 56, height: 56, borderRadius: 16, borderWidth: 2, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bgElevated, position: 'relative' },
   icon: { fontSize: 26 },
-  unlockedBadge: { position: 'absolute', top: -4, right: -4, width: 18, height: 18, borderRadius: 9, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center' },
-  unlockedBadgeText: { color: '#fff', fontSize: 10, fontWeight: '900' },
+  unlockedBadge: { position: 'absolute', top: -4, right: -4, width: 20, height: 20, borderRadius: 10, backgroundColor: Colors.secondary, alignItems: 'center', justifyContent: 'center' },
+  unlockedBadgeText: { color: '#fff', fontSize: 11, fontWeight: '900' },
   cardContent: { flex: 1 },
   cardTitle: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary, marginBottom: 4 },
   cardDesc: { fontSize: 13, color: Colors.textSecondary, lineHeight: 18, marginBottom: 8 },
   lockedText: { opacity: 0.5 },
   xpRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   xpText: { fontSize: 13, fontWeight: '700' },
-  unlockedLabel: { fontSize: 10, color: Colors.accent, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1, backgroundColor: Colors.accent + '20', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 },
+  unlockedLabel: { fontSize: 10, color: Colors.secondary, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1, backgroundColor: Colors.secondary + '20', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 },
   lockOverlay: { },
   lockIcon: { fontSize: 18, opacity: 0.4 },
 });

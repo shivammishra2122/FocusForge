@@ -10,31 +10,19 @@ import { Audio } from 'expo-av';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { CATEGORIES, getCategoryById } from '../constants/categories';
 import { SOUNDS, getSoundById } from '../constants/sounds';
-import { getUserProfile, getSettings, addSessionToStats, saveFocusSession,
+import {
+  getUserProfile, getSettings, addSessionToStats, saveFocusSession,
   addFocusMinutesToDate, getFocusSessionActive,
   setFocusSessionActive, clearFocusSession, penalizeStreak,
-  getBlockedApps } from '../utils/storage';
+  getBlockedApps
+} from '../utils/storage';
 import { getTodayKey } from '../utils/helpers';
 import * as helpers from '../utils/helpers';
 import { startBlocking, stopBlocking } from '../utils/appBlocker';
+import { calculateFocusEfficiency, calculateFocusIndex } from '../utils/focusMetrics';
+import { Theme } from '../constants/colors';
 
 const { width } = Dimensions.get('window');
-
-// Obsidian Theme tokens
-const Theme = {
-  bg: '#131315',
-  surface: '#1b1b1d',
-  surfaceHigh: '#2a2a2c',
-  surfaceHighest: '#353437',
-  onSurface: '#e5e1e4',
-  onSurfaceVariant: '#c8c6ca',
-  primary: '#c0c1ff',
-  primaryVariant: '#696df8',
-  tertiary: '#d0bcff',
-  secondary: '#c4c1fb',
-  error: '#ffb4ab',
-  border: 'rgba(71, 70, 74, 0.15)',
-};
 
 export default function DeepFocusScreen({ navigation, route }) {
   const durationMinutes = route?.params?.duration || 25;
@@ -50,6 +38,7 @@ export default function DeepFocusScreen({ navigation, route }) {
   const [reflectionNote, setReflectionNote] = useState('');
   const [sessionDataToSave, setSessionDataToSave] = useState(null);
   const [soundObject, setSoundObject] = useState(null);
+  const [isMuted, setIsMuted] = useState(false);
   const [profile, setProfile] = useState({});
 
   const totalSeconds = durationMinutes * 60;
@@ -65,30 +54,34 @@ export default function DeepFocusScreen({ navigation, route }) {
   useEffect(() => {
     const initSession = async () => {
       const active = await getFocusSessionActive();
+      let initSeconds;
+      
       if (active && active.startedAt && active.durationMin) {
         const elapsedSec = Math.floor((Date.now() - active.startedAt) / 1000);
         const remainingSec = (active.durationMin * 60) - elapsedSec;
-        
-        if (remainingSec <= 0) {
-          setSecondsLeft(0);
-          handleSessionComplete();
-        } else {
-          setSecondsLeft(remainingSec);
-          setIsRunning(true);
-          KeepAwake.activateKeepAwakeAsync();
-          startPulse();
-          if (soundId !== 'NONE') loadAndPlaySound();
-          
-          try {
-            const blockedApps = await getBlockedApps();
-            const activeBlocked = blockedApps.filter(a => a.blocked).map(a => a.packageName);
-            if (activeBlocked.length > 0) startBlocking(activeBlocked);
-          } catch (e) {
-            startBlocking([]);
-          }
-        }
+        initSeconds = Math.max(0, remainingSec);
       } else {
-        startSession();
+        initSeconds = durationMinutes * 60;
+        await setFocusSessionActive({
+          startedAt: Date.now(),
+          durationMin: durationMinutes,
+          mode,
+        });
+      }
+
+      setSecondsLeft(initSeconds);
+      setIsRunning(true);
+      KeepAwake.activateKeepAwakeAsync();
+      startPulse();
+      
+      if (soundId !== 'NONE') loadAndPlaySound();
+
+      try {
+        const blockedApps = await getBlockedApps();
+        const activeBlocked = blockedApps.filter(a => a.blocked).map(a => a.packageName);
+        if (activeBlocked.length > 0) startBlocking(activeBlocked);
+      } catch (e) {
+        startBlocking([]);
       }
     };
     initSession();
@@ -107,7 +100,7 @@ export default function DeepFocusScreen({ navigation, route }) {
       try {
         await soundObject.stopAsync();
         await soundObject.unloadAsync();
-      } catch (e) {}
+      } catch (e) { }
     }
   };
 
@@ -121,7 +114,18 @@ export default function DeepFocusScreen({ navigation, route }) {
         { shouldPlay: true, isLooping: true, volume: 0.5 }
       );
       setSoundObject(sound);
-    } catch (err) {}
+    } catch (err) { }
+  };
+
+  const toggleMute = async () => {
+    if (soundObject) {
+      try {
+        const nextMute = !isMuted;
+        await soundObject.setVolumeAsync(nextMute ? 0 : 0.5);
+        setIsMuted(nextMute);
+        helpers.hapticLight();
+      } catch (e) {}
+    }
   };
 
   useEffect(() => {
@@ -158,29 +162,6 @@ export default function DeepFocusScreen({ navigation, route }) {
     return () => subscription?.remove();
   }, [isRunning]);
 
-  const startSession = async () => {
-    setIsRunning(true);
-    helpers.hapticMedium();
-    KeepAwake.activateKeepAwakeAsync();
-
-    await setFocusSessionActive({
-      startedAt: Date.now(),
-      durationMin: durationMinutes,
-      mode,
-    });
-
-    startPulse();
-    if (soundId !== 'NONE') loadAndPlaySound();
-
-    try {
-      const blockedApps = await getBlockedApps();
-      const activeBlocked = blockedApps.filter(a => a.blocked).map(a => a.packageName);
-      if (activeBlocked.length > 0) startBlocking(activeBlocked);
-    } catch (e) {
-      startBlocking([]);
-    }
-  };
-
   const startPulse = () => {
     Animated.loop(
       Animated.sequence([
@@ -200,7 +181,7 @@ export default function DeepFocusScreen({ navigation, route }) {
 
     const elapsed = durationMinutes;
     const now = Date.now();
-    
+
     setSessionDataToSave({
       id: now.toString(),
       mode,
@@ -209,13 +190,13 @@ export default function DeepFocusScreen({ navigation, route }) {
       deepFocus: true,
       category: initialCategory,
     });
-    
+
     setShowReflectionModal(true);
   };
 
   const saveReflectionAndFinish = async () => {
     if (!sessionDataToSave) return;
-    
+
     const { durationMinutes: elapsed } = sessionDataToSave;
     await addSessionToStats(elapsed);
     await addFocusMinutesToDate(getTodayKey(), elapsed);
@@ -241,7 +222,7 @@ export default function DeepFocusScreen({ navigation, route }) {
     await penalizeStreak();
     helpers.hapticLight();
     stopSound();
-    
+
     const elapsedMin = Math.floor((totalSeconds - secondsLeft) / 60);
     if (elapsedMin > 0) await addFocusMinutesToDate(getTodayKey(), elapsedMin);
 
@@ -254,87 +235,120 @@ export default function DeepFocusScreen({ navigation, route }) {
     await penalizeStreak();
   };
 
-  // Timer tick
+  // Local timer tick
   useEffect(() => {
     if (isRunning) {
-      intervalRef.current = setInterval(async () => {
-        const active = await getFocusSessionActive();
-        if (active && active.startedAt && active.durationMin) {
-          const elapsedSec = Math.floor((Date.now() - active.startedAt) / 1000);
-          const remainingSec = (active.durationMin * 60) - elapsedSec;
-          
-          if (remainingSec <= 0) {
+      intervalRef.current = setInterval(() => {
+        setSecondsLeft((prev) => {
+          if (prev <= 1) {
             clearInterval(intervalRef.current);
-            setSecondsLeft(0);
             handleSessionComplete();
-          } else {
-            setSecondsLeft(remainingSec);
+            return 0;
           }
-        }
+          return prev - 1;
+        });
       }, 1000);
     }
     return () => clearInterval(intervalRef.current);
   }, [isRunning]);
 
-  const elapsedMinutes = Math.floor((totalSeconds - secondsLeft) / 60);
-  const progressRatio = Math.min((totalSeconds - secondsLeft) / totalSeconds, 1);
+  // Professional focus metrics
+  const elapsedSeconds = totalSeconds - secondsLeft;
+  const progressRatio = Math.min(elapsedSeconds / totalSeconds, 1);
+  const efficiency = calculateFocusEfficiency(elapsedSeconds, totalSeconds, true);
+  const focusIndex = calculateFocusIndex(elapsedSeconds, totalSeconds);
+
+  const formatMMSS = (sec) => {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
 
   return (
     <View style={styles.container}>
       <StatusBar hidden />
 
-      {/* Header */}
+      {/* Header with Focused Action Buttons */}
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => navigation.openDrawer && navigation.openDrawer()}>
-            <MaterialCommunityIcons name="menu" size={26} color={Theme.primary} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>OBSIDIAN</Text>
+        <View style={styles.headerBadge}>
+          <MaterialCommunityIcons name="shield-lock-outline" size={14} color={Theme.primary} />
+          <Text style={styles.headerBadgeText}>DEEP WORK PROTOCOL</Text>
         </View>
-        <TouchableOpacity style={styles.profileBtn}>
-           <Image source={{ uri: profile?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80' }} style={styles.profileImg} />
-        </TouchableOpacity>
+
+        <View style={styles.headerActions}>
+          {soundId !== 'NONE' && (
+            <TouchableOpacity
+              style={styles.headerIconBtn}
+              onPress={toggleMute}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <MaterialCommunityIcons
+                name={isMuted ? 'volume-off' : 'volume-high'}
+                size={18}
+                color={isMuted ? Theme.onSurfaceVariant : Theme.primary}
+              />
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            style={styles.headerCloseBtn}
+            onPress={() => {
+              helpers.hapticLight();
+              setShowExitModal(true);
+            }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <MaterialCommunityIcons name="close" size={20} color={Theme.onSurface} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.mainContent}>
-        {/* Animated Icon */}
-        <Animated.View style={[styles.iconWrap, { transform: [{ scale: pulseAnim }] }]}>
-          <View style={styles.iconCenter} />
+        {/* Centered Timer / Icon */}
+        <Animated.View style={[styles.timerCircle, { transform: [{ scale: pulseAnim }] }]}>
+          <Text style={styles.remainingText}>{formatMMSS(secondsLeft)}</Text>
+          <Text style={styles.remainingLabel}>PROTOCOL REMAINING</Text>
         </Animated.View>
 
-        <Text style={styles.mainTitle}>FOCUS MODE{'\n'}ACTIVE</Text>
+        <Text style={styles.mainTitle}>FOCUS MODE ACTIVE</Text>
         <Text style={styles.mainDesc}>
-          The path to excellence is paved with silence. Your current objective requires absolute presence.
+          Architecture requires focus. System is locked to optimize performance.
         </Text>
 
         {/* Stats Card */}
         <View style={styles.statsCard}>
-          <Text style={styles.statsLabel}>SYSTEM UPTIME</Text>
-          <View style={styles.uptimeRow}>
-            <Text style={styles.uptimeVal}>{elapsedMinutes}</Text>
-            <Text style={styles.uptimeUnit}>MIN</Text>
-          </View>
-          
           <View style={styles.barBg}>
             <View style={[styles.barFill, { width: `${progressRatio * 100}%` }]} />
           </View>
 
           <View style={styles.cardFooter}>
-            <Text style={styles.cardFooterLeft}>DEEP WORK SESSION</Text>
-            <Text style={styles.cardFooterRight}>GOAL: {durationMinutes}M</Text>
+            <View style={styles.footerStat}>
+              <Text style={styles.footerLabel}>EFFICIENCY</Text>
+              <Text style={styles.footerVal}>{efficiency}%</Text>
+            </View>
+            <View style={styles.footerStat}>
+              <Text style={styles.footerLabel}>FOCUS INDEX</Text>
+              <Text style={styles.footerVal}>{focusIndex}</Text>
+            </View>
           </View>
         </View>
 
         {/* Actions */}
-        <TouchableOpacity style={styles.continueBtn} activeOpacity={0.8} onPress={() => {}}>
-          <LinearGradient colors={[Theme.secondary, Theme.primaryVariant]} style={styles.continueGrad} start={{x:0, y:0}} end={{x:1, y:1}}>
-            <Text style={styles.continueText}>CONTINUE FOCUS</Text>
+        <TouchableOpacity
+          style={styles.continueBtn}
+          activeOpacity={0.8}
+          onPress={() => {
+            helpers.hapticLight();
+          }}
+        >
+          <LinearGradient colors={[Theme.secondary, Theme.primaryVariant]} style={styles.continueGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+            <Text style={styles.continueText}>LOCK IN / CONTINUE FOCUS</Text>
           </LinearGradient>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.exitBtn} onPress={() => setShowExitModal(true)}>
           <Text style={styles.exitText}>EXIT SYSTEM</Text>
-          <MaterialCommunityIcons name="login-variant" size={14} color={Theme.onSurfaceVariant} style={{ transform: [{ rotate: '180deg'}] }} />
+          <MaterialCommunityIcons name="login-variant" size={14} color={Theme.onSurfaceVariant} style={{ transform: [{ rotate: '180deg' }] }} />
         </TouchableOpacity>
       </View>
 
@@ -342,10 +356,10 @@ export default function DeepFocusScreen({ navigation, route }) {
       <Modal visible={showReflectionModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-             <MaterialCommunityIcons name="check-circle-outline" size={48} color={Theme.primary} style={{ marginBottom: 16 }} />
+            <MaterialCommunityIcons name="check-circle-outline" size={48} color={Theme.primary} style={{ marginBottom: 16 }} />
             <Text style={styles.modalTitle}>Protocol Complete</Text>
             <Text style={styles.modalBody}>Log your execution summary to append this sequence to your system record.</Text>
-            
+
             <View style={styles.reflectionContainer}>
               <Text style={styles.reflectionCategory}>
                 <MaterialCommunityIcons name={getCategoryById(initialCategory).icon} size={12} /> {getCategoryById(initialCategory).label}
@@ -365,7 +379,7 @@ export default function DeepFocusScreen({ navigation, route }) {
             <TouchableOpacity style={styles.modalActionBtn} onPress={saveReflectionAndFinish}>
               <Text style={styles.modalActionText}>APPEND TO RECORD</Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity style={styles.skipBtn} onPress={() => { setReflectionNote(''); saveReflectionAndFinish(); }}>
               <Text style={styles.skipBtnText}>BYPASS LOG</Text>
             </TouchableOpacity>
@@ -396,7 +410,7 @@ export default function DeepFocusScreen({ navigation, route }) {
       <Modal visible={showPenaltyWarning} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-             <MaterialCommunityIcons name="shield-alert-outline" size={48} color={Theme.error} style={{ marginBottom: 16 }} />
+            <MaterialCommunityIcons name="shield-alert-outline" size={48} color={Theme.error} style={{ marginBottom: 16 }} />
             <Text style={styles.modalTitleError}>System Breach</Text>
             <Text style={styles.modalBody}>
               You navigated away from the active protocol. Your streak parameter has been penalized.
@@ -413,33 +427,91 @@ export default function DeepFocusScreen({ navigation, route }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Theme.bg },
-  
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 16, zIndex: 10 },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  headerTitle: { fontSize: 20, color: Theme.onSurface, fontWeight: '300', letterSpacing: 4 },
-  profileBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: Theme.surfaceHighest, borderWidth: 1, borderColor: 'rgba(71,70,74,0.3)', overflow: 'hidden' },
-  profileImg: { width: '100%', height: '100%' },
+
+  // Focused State Header
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: 16,
+    backgroundColor: '#0A0A0B',
+    zIndex: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: Theme.border,
+  },
+  headerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(192, 193, 255, 0.08)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(192, 193, 255, 0.15)',
+  },
+  headerBadgeText: {
+    fontSize: 10,
+    color: Theme.primary,
+    fontWeight: '700',
+    letterSpacing: 1.5,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  headerIconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Theme.surfaceHigh,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Theme.border,
+  },
+  headerCloseBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Theme.surfaceHigh,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Theme.border,
+  },
 
   mainContent: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
+  timerCircle: {
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: 'rgba(27, 27, 29, 0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 40,
+    borderWidth: 1,
+    borderColor: Theme.border,
+    shadowColor: Theme.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.1,
+    shadowRadius: 30,
+    elevation: 10,
+  },
+  remainingText: { fontSize: 52, fontWeight: '100', color: Theme.primary, letterSpacing: -2 },
+  remainingLabel: { fontSize: 8, color: Theme.onSurfaceVariant, fontWeight: '700', letterSpacing: 1.5, marginTop: 4 },
 
-  iconWrap: { width: 100, height: 100, borderRadius: 24, backgroundColor: Theme.surfaceHigh, alignItems: 'center', justifyContent: 'center', marginBottom: 40, borderWidth: 1, borderColor: Theme.border },
-  iconCenter: { width: 30, height: 30, borderRadius: 15, backgroundColor: Theme.primary, borderWidth: 6, borderColor: Theme.bg },
+  mainTitle: { fontSize: 24, fontWeight: '700', color: Theme.onSurface, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 12 },
+  mainDesc: { fontSize: 13, color: Theme.onSurfaceVariant, textAlign: 'center', lineHeight: 22, marginBottom: 40, paddingHorizontal: 20 },
 
-  mainTitle: { fontSize: 36, fontWeight: '800', color: Theme.onSurface, textAlign: 'center', letterSpacing: -1, lineHeight: 38, marginBottom: 16 },
-  mainDesc: { fontSize: 13, color: Theme.onSurfaceVariant, textAlign: 'center', lineHeight: 22, marginBottom: 48, paddingHorizontal: 10 },
-
-  statsCard: { width: '100%', backgroundColor: Theme.surface, borderRadius: 16, padding: 24, borderWidth: 1, borderColor: Theme.border, marginBottom: 40 },
-  statsLabel: { fontSize: 9, color: Theme.onSurfaceVariant, fontWeight: '700', letterSpacing: 2, textAlign: 'center', marginBottom: 12 },
-  uptimeRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', gap: 6, marginBottom: 24 },
-  uptimeVal: { fontSize: 48, fontWeight: '300', color: Theme.primary, lineHeight: 52 },
-  uptimeUnit: { fontSize: 16, color: Theme.onSurfaceVariant, fontWeight: '600', paddingBottom: 8 },
-  
-  barBg: { height: 3, backgroundColor: Theme.surfaceHigh, borderRadius: 2, overflow: 'hidden', marginBottom: 20 },
-  barFill: { height: '100%', backgroundColor: Theme.primaryVariant },
-
+  statsCard: { width: '100%', backgroundColor: Theme.surface, borderRadius: 16, padding: 24, borderWidth: 1, borderColor: Theme.border, marginBottom: 32 },
   cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  cardFooterLeft: { fontSize: 9, color: Theme.onSurfaceVariant, fontWeight: '700', letterSpacing: 1 },
-  cardFooterRight: { fontSize: 9, color: Theme.primaryVariant, fontWeight: '800', letterSpacing: 1 },
+  footerStat: { alignItems: 'center' },
+  footerLabel: { fontSize: 8, color: Theme.onSurfaceVariant, fontWeight: '700', letterSpacing: 1, marginBottom: 4 },
+  footerVal: { fontSize: 14, color: Theme.primary, fontWeight: '700' },
 
   continueBtn: { width: '100%', borderRadius: 8, overflow: 'hidden', marginBottom: 24 },
   continueGrad: { paddingVertical: 16, alignItems: 'center' },
@@ -453,20 +525,20 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: 22, fontWeight: '700', color: Theme.onSurface, marginBottom: 12 },
   modalTitleError: { fontSize: 22, fontWeight: '700', color: Theme.error, marginBottom: 12 },
   modalBody: { fontSize: 13, color: Theme.onSurfaceVariant, textAlign: 'center', lineHeight: 20, marginBottom: 28 },
-  
+
   modalActionBtn: { width: '100%', paddingVertical: 16, borderRadius: 12, backgroundColor: Theme.surfaceHigh, borderWidth: 1, borderColor: Theme.border, alignItems: 'center', marginBottom: 12 },
   modalActionText: { color: Theme.primary, fontWeight: '700', fontSize: 11, letterSpacing: 1.5 },
-  
+
   modalDangerBtn: { width: '100%', paddingVertical: 16, borderRadius: 12, backgroundColor: 'rgba(255, 180, 171, 0.1)', borderWidth: 1, borderColor: 'rgba(255, 180, 171, 0.3)', alignItems: 'center', marginBottom: 12 },
   modalDangerText: { color: Theme.error, fontWeight: '700', fontSize: 11, letterSpacing: 1.5 },
-  
+
   modalCancelBtn: { width: '100%', paddingVertical: 16, alignItems: 'center' },
   modalCancelText: { color: Theme.onSurfaceVariant, fontWeight: '700', fontSize: 11, letterSpacing: 1.5 },
 
   reflectionContainer: { width: '100%', marginBottom: 24 },
   reflectionCategory: { fontSize: 9, color: Theme.onSurfaceVariant, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 12, textAlign: 'center' },
   reflectionInput: { backgroundColor: Theme.surfaceHigh, borderRadius: 12, padding: 16, color: Theme.onSurface, fontSize: 14, textAlignVertical: 'top', minHeight: 90, borderWidth: 1, borderColor: Theme.border },
-  
+
   skipBtn: { paddingVertical: 12 },
   skipBtnText: { color: Theme.onSurfaceVariant, fontSize: 9, fontWeight: '700', letterSpacing: 1.5 },
 });
