@@ -1,0 +1,52 @@
+name: FocusForge Backend CI
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-ci.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-ci.yml'
+
+jobs:
+  test:
+    name: Backend Test & Lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: backend/package.json
+
+      - name: Install Dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      - name: Syntax & Structure Validation
+        run: |
+          find src -name "*.js" -exec node --check {} +
+
+      - name: Run Unit & Integration Tests
+        run: |
+          npm test --if-present
+        env:
+          NODE_ENV: test
+          JWT_SECRET: test_jwt_secret_key_for_ci_2026
+          PORT: 5001

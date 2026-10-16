@@ -1,15 +1,15 @@
 import React, { useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, Platform, TouchableOpacity, Image
+  View, Text, StyleSheet, ScrollView, Platform, TouchableOpacity, Image, Dimensions
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Svg, { Rect } from 'react-native-svg';
-import { getStats, getFocusSessions, getSettings, getStreakData, getUserProfile } from '../utils/storage';
+import { getStats, getFocusSessions, getSettings, getStreakData, getUserProfile, getUnlockedAchievements } from '../utils/storage';
 import { ACHIEVEMENTS, getLevelInfo, getProgressToNextLevel } from '../constants/achievements';
 import { formatMinutes, getLastNDays, getDayLabel } from '../utils/helpers';
 
-const { width } = require('react-native').Dimensions.get('window');
+const { width } = Dimensions.get('window');
 const CHART_WIDTH = width - 88; // Accounting for paddings
 const CHART_HEIGHT = 100;
 
@@ -40,18 +40,18 @@ export default function AnalyticsScreen({ navigation }) {
   );
 
   const load = async () => {
-    const [p, s, streakData] = await Promise.all([
-      getUserProfile(), getStats(), getStreakData(),
+    const [p, s, streakData, unlocked] = await Promise.all([
+      getUserProfile(),
+      getStats(),
+      getStreakData(),
+      getUnlockedAchievements(),
     ]);
     setProfile(p || {});
     setStats(s || { xp: 0, streak: 0, totalMinutes: 0 });
 
     const days = getLastNDays(7);
     setWeekData(days.map((d) => ({ key: d, label: getDayLabel(d), minutes: streakData[d] || 0 })));
-
-    const { getUnlockedAchievements } = require('../utils/storage');
-    const unlocked = await getUnlockedAchievements();
-    setUnlockedAchievements(unlocked);
+    setUnlockedAchievements(unlocked || []);
   };
 
   if (!stats) return null;

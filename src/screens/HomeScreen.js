@@ -20,7 +20,7 @@ import {
   getSettings,
   getStreakData,
   getUnlockedAchievements,
-  unlockAchievement,
+  saveUnlockedAchievements,
   saveStats,
   saveTasks,
 } from '../utils/storage';
@@ -77,17 +77,19 @@ export default function HomeScreen({ navigation }) {
 
       for (const a of ACHIEVEMENTS) {
         if (!currentUnlocked.includes(a.id) && typeof a.condition === 'function' && a.condition(s)) {
-          await unlockAchievement(a.id);
           currentUnlocked.push(a.id);
           newlyEarnedXp += a.xp || 0;
           hasNewUnlocks = true;
         }
       }
 
-      if (hasNewUnlocks && newlyEarnedXp > 0) {
-        s.xp = (s.xp || 0) + newlyEarnedXp;
-        await saveStats(s);
-        setStats({ ...s });
+      if (hasNewUnlocks) {
+        await saveUnlockedAchievements(currentUnlocked);
+        if (newlyEarnedXp > 0) {
+          s.xp = (s.xp || 0) + newlyEarnedXp;
+          await saveStats(s);
+          setStats({ ...s });
+        }
       }
     }
   };

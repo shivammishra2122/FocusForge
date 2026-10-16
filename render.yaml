@@ -1,0 +1,27 @@
+# FocusForge Render Blueprint
+# Automatically deploys the FocusForge backend web service to Render
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: focusforge-backend
+    env: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: PORT
+        value: "10000"
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        value: focusforge_prod_secret_key
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: DB_PATH
+        value: ./data/focusforge.db
+      - key: CORS_ORIGIN
+        value: "*"

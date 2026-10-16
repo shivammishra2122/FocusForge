@@ -1,0 +1,56 @@
+name: FocusForge Mobile CI
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'App.js'
+      - 'index.js'
+      - 'app.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/mobile-ci.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'App.js'
+      - 'index.js'
+      - 'app.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/mobile-ci.yml'
+
+jobs:
+  validate:
+    name: Mobile App Validation & Expo Build Check
+    runs-on: ubuntu-latest
+    env:
+      CI: 'true'
+      EXPO_NO_TELEMETRY: '1'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install Mobile Dependencies
+        run: npm ci
+
+      - name: Verify JavaScript Syntax
+        run: |
+          node --check App.js index.js babel.config.js
+
+      - name: Validate Expo Configuration
+        run: |
+          npx expo config --type public
+
+      - name: Verify Expo Web Bundle & Asset Compilation
+        run: |
+          npx expo export --platform web --clear

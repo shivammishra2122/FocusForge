@@ -10,7 +10,8 @@ import { getUserProfile, getSettings, saveSettings, getStats, saveStats, saveUse
 import { getLevelInfo } from '../constants/achievements';
 import { hapticLight, hapticMedium, hapticSuccess } from '../utils/helpers';
 import { supabase } from '../config/supabase';
-import { pushLocalDataToCloud, pullCloudDataToLocal } from '../utils/cloudSync';
+import apiClient from '../utils/apiClient';
+import { pushLocalDataToCloud, pullCloudDataToLocal, getActiveCloudProvider } from '../utils/cloudSync';
 import { Theme } from '../constants/colors';
 
 const SettingSwitch = ({ label, sub, value, onChange }) => (
@@ -51,6 +52,7 @@ export default function ProfileScreen({ navigation }) {
   const [isLoadingAuth, setIsLoadingAuth] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isSyncActive, setIsSyncActive] = useState(false);
+  const [syncProvider, setSyncProvider] = useState('none');
 
   // Edit Profile Modal state
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
@@ -68,10 +70,9 @@ export default function ProfileScreen({ navigation }) {
     setSettings(s);
     setStats(st);
     
-    if (supabase) {
-      const { data: { session } } = await supabase.auth.getSession();
-      setIsSyncActive(!!session);
-    }
+    const provider = await getActiveCloudProvider();
+    setIsSyncActive(provider !== 'none');
+    setSyncProvider(provider);
   };
 
   const updateSetting = async (key, value) => {
@@ -118,34 +119,63 @@ export default function ProfileScreen({ navigation }) {
   };
 
   const handleAuthAction = async (isSignUp) => {
-    if (!supabase) {
-      Alert.alert('Configuration Missing', 'Supabase credentials missing in src/config/supabase.js');
-      return;
-    }
-    
     if (!authEmail || !authPassword) {
       Alert.alert('Error', 'Please provide an identifier and passphrase.');
       return;
     }
 
-    setIsLoadingAuth(true);
-    let error = null;
+    if (authPassword.length < 6) {
+      Alert.alert('Security Policy', 'Passphrase must be at least 6 characters long.');
+      return;
+    }
 
-    if (isSignUp) {
-      const resp = await supabase.auth.signUp({ email: authEmail, password: authPassword });
-      error = resp.error;
-    } else {
-      const resp = await supabase.auth.signInWithPassword({ email: authEmail, password: authPassword });
-      error = resp.error;
+    setIsLoadingAuth(true);
+    let authenticated = false;
+    let usedProvider = 'backend';
+    let authError = null;
+
+    // 1. Primary: Custom FocusForge Backend API
+    try {
+      if (isSignUp) {
+        await apiClient.register(authEmail.trim(), authPassword, profile?.name || 'Operator', {
+          dailyGoalHours: profile?.goalHours || 2,
+        });
+      } else {
+        await apiClient.login(authEmail.trim(), authPassword);
+      }
+      authenticated = true;
+      usedProvider = 'backend';
+    } catch (backendErr) {
+      authError = backendErr;
+      console.warn('[ProfileScreen] Backend auth failed:', backendErr.message);
+
+      // Fallback to Supabase if backend is unreachable or returns server error
+      if (supabase && (backendErr.status === 0 || backendErr.status >= 500 || backendErr.status === 404)) {
+        try {
+          if (isSignUp) {
+            const resp = await supabase.auth.signUp({ email: authEmail.trim(), password: authPassword });
+            if (resp.error) throw resp.error;
+          } else {
+            const resp = await supabase.auth.signInWithPassword({ email: authEmail.trim(), password: authPassword });
+            if (resp.error) throw resp.error;
+          }
+          authenticated = true;
+          usedProvider = 'supabase';
+          authError = null;
+        } catch (supabaseErr) {
+          authError = supabaseErr;
+        }
+      }
     }
 
     setIsLoadingAuth(false);
 
-    if (error) {
-      Alert.alert('Authentication Failed', error.message || 'Check connection.');
+    if (!authenticated) {
+      Alert.alert('Authentication Failed', authError?.message || 'Check connection.');
       hapticLight();
     } else {
       setIsSyncActive(true);
+      setSyncProvider(usedProvider);
       setShowAuthModal(false);
       
       if (isSignUp) {
@@ -156,13 +186,26 @@ export default function ProfileScreen({ navigation }) {
       }
 
       hapticSuccess();
-      Alert.alert('Link Established', 'Terminal synchronized with the cloud backend.');
+      Alert.alert(
+        'Link Established',
+        usedProvider === 'backend'
+          ? 'Terminal synchronized with FocusForge cloud backend API.'
+          : 'Terminal synchronized with Supabase cloud layer.'
+      );
     }
   };
 
   const handleSignOut = async () => {
-    if (supabase) await supabase.auth.signOut();
+    await apiClient.logout();
+    if (supabase) {
+      try {
+        await supabase.auth.signOut();
+      } catch (e) {
+        // ignore signout error
+      }
+    }
     setIsSyncActive(false);
+    setSyncProvider('none');
     hapticLight();
   };
 
@@ -437,23 +480,31 @@ export default function ProfileScreen({ navigation }) {
             <MaterialCommunityIcons name={isSyncActive ? "cloud-check" : "cloud-off-outline"} size={14} color={isSyncActive ? Theme.primary : Theme.onSurfaceVariant} />
             <Text style={styles.memHeaderTitle}>CLOUD SYNC LAYER</Text>
           </View>
-          <Text style={styles.memTitle}>{isSyncActive ? "Active" : "Offline"}</Text>
-          <Text style={styles.memSub}>{isSyncActive ? "Data secured & synchronized." : "Local storage only. Device failure risks data loss."}</Text>
+          <Text style={styles.memTitle}>
+            {isSyncActive
+              ? (syncProvider === 'backend' ? "FocusForge Cloud API" : "Supabase Cloud")
+              : "Offline"}
+          </Text>
+          <Text style={styles.memSub}>
+            {isSyncActive
+              ? "Real-time encrypted synchronization active across devices."
+              : "Local storage only. Device failure risks data loss."}
+          </Text>
           <View style={styles.memBarBg}>
             <View style={[styles.memBarFill, { width: '100%' }]} />
           </View>
-          <Text style={styles.memProgress}>{isSyncActive ? "SYNC SECURED" : "SYNC DISABLED"}</Text>
+          <Text style={styles.memProgress}>
+            {isSyncActive
+              ? (syncProvider === 'backend' ? "FORGE CLOUD LINKED" : "SUPABASE LINKED")
+              : "SYNC DISABLED"}
+          </Text>
           <TouchableOpacity 
             style={styles.manageBtn} 
             onPress={() => {
               if (isSyncActive) {
                 handleSignOut();
               } else {
-                if (!supabase) {
-                  Alert.alert('System Offline', 'Supabase keys missing. Update src/config/supabase.js to enable cloud sync.');
-                } else {
-                  setShowAuthModal(true);
-                }
+                setShowAuthModal(true);
               }
             }}
           >

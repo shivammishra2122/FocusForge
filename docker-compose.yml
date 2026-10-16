@@ -1,0 +1,24 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: focusforge-backend
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    environment:
+      - PORT=5001
+      - NODE_ENV=production
+      - JWT_SECRET=${JWT_SECRET:-focusforge_prod_secret_key}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
+      - DB_PATH=/app/data/focusforge.db
+      - CORS_ORIGIN=${CORS_ORIGIN:-*}
+    volumes:
+      - ./backend/data:/app/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:5001/api/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

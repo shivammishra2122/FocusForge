@@ -1,0 +1,41 @@
+{
+  "name": "focusforge-backend",
+  "version": "1.0.0",
+  "description": "Production-ready backend API for FocusForge Deep Focus & Productivity Suite",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "node --import ./tests/setup.js --test --test-concurrency=1 tests/**/*.test.js"
+  },
+  "keywords": [
+    "focusforge",
+    "focus",
+    "pomodoro",
+    "productivity",
+    "express",
+    "sqlite",
+    "rest-api"
+  ],
+  "author": "FocusForge Engineering Team",
+  "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.9",
+    "supertest": "^7.0.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "transform": {}
+  }
+}

@@ -38,6 +38,7 @@ export default function DeepFocusScreen({ navigation, route }) {
   const [reflectionNote, setReflectionNote] = useState('');
   const [sessionDataToSave, setSessionDataToSave] = useState(null);
   const [soundObject, setSoundObject] = useState(null);
+  const soundRef = useRef(null);
   const [isMuted, setIsMuted] = useState(false);
   const [profile, setProfile] = useState({});
 
@@ -49,6 +50,79 @@ export default function DeepFocusScreen({ navigation, route }) {
   useEffect(() => {
     getUserProfile().then(p => setProfile(p || {}));
   }, []);
+
+  const configureAudioMode = async () => {
+    try {
+      await Audio.setAudioModeAsync({
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: true,
+        shouldDuckAndroid: true,
+      });
+    } catch (e) {
+      // Audio mode config failure is non-fatal
+    }
+  };
+
+  const stopSound = useCallback(async () => {
+    const currentSound = soundRef.current;
+    soundRef.current = null;
+    setSoundObject(null);
+    if (currentSound) {
+      try {
+        const status = await currentSound.getStatusAsync().catch(() => null);
+        if (status && status.isLoaded) {
+          await currentSound.stopAsync().catch(() => {});
+          await currentSound.unloadAsync().catch(() => {});
+        } else if (status) {
+          await currentSound.unloadAsync().catch(() => {});
+        }
+      } catch (e) {
+        // Safe catch prevents unhandled promise rejections
+      }
+    }
+  }, []);
+
+  const loadAndPlaySound = async () => {
+    await configureAudioMode();
+
+    if (soundRef.current) {
+      try {
+        await soundRef.current.stopAsync().catch(() => {});
+        await soundRef.current.unloadAsync().catch(() => {});
+      } catch (_) {}
+      soundRef.current = null;
+      setSoundObject(null);
+    }
+
+    try {
+      const s = getSoundById(soundId);
+      if (!s || !s.url) return;
+
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: s.url },
+        { shouldPlay: true, isLooping: true, volume: isMuted ? 0 : 0.5 }
+      );
+      soundRef.current = sound;
+      setSoundObject(sound);
+    } catch (err) {
+      console.warn('Deep focus sound playback unavailable:', err?.message || err);
+      // Timer continues running smoothly even if audio stream fails
+    }
+  };
+
+  const toggleMute = async () => {
+    const nextMute = !isMuted;
+    setIsMuted(nextMute);
+    helpers.hapticLight();
+    if (soundRef.current) {
+      try {
+        const status = await soundRef.current.getStatusAsync().catch(() => null);
+        if (status && status.isLoaded) {
+          await soundRef.current.setVolumeAsync(nextMute ? 0 : 0.5).catch(() => {});
+        }
+      } catch (e) {}
+    }
+  };
 
   // Auto-start or resume on mount
   useEffect(() => {
@@ -93,40 +167,7 @@ export default function DeepFocusScreen({ navigation, route }) {
       clearFocusSession();
       stopSound();
     };
-  }, []);
-
-  const stopSound = async () => {
-    if (soundObject) {
-      try {
-        await soundObject.stopAsync();
-        await soundObject.unloadAsync();
-      } catch (e) { }
-    }
-  };
-
-  const loadAndPlaySound = async () => {
-    try {
-      const s = getSoundById(soundId);
-      if (!s || !s.url) return;
-
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: s.url },
-        { shouldPlay: true, isLooping: true, volume: 0.5 }
-      );
-      setSoundObject(sound);
-    } catch (err) { }
-  };
-
-  const toggleMute = async () => {
-    if (soundObject) {
-      try {
-        const nextMute = !isMuted;
-        await soundObject.setVolumeAsync(nextMute ? 0 : 0.5);
-        setIsMuted(nextMute);
-        helpers.hapticLight();
-      } catch (e) {}
-    }
-  };
+  }, [stopSound]);
 
   useEffect(() => {
     const backAction = () => {
