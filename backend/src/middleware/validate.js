@@ -5,8 +5,16 @@ import { AppError } from './errorHandler.js';
  */
 export const isValidEmail = (email) => {
   if (typeof email !== 'string') return false;
-  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return re.test(email.trim());
+  const trimmed = email.trim();
+  if (trimmed.length === 0 || trimmed.length > 254) return false;
+
+  const atIndex = trimmed.indexOf('@');
+  if (atIndex <= 0 || atIndex !== trimmed.lastIndexOf('@')) return false;
+
+  const dotIndex = trimmed.indexOf('.', atIndex);
+  if (dotIndex <= atIndex + 1 || dotIndex === trimmed.length - 1) return false;
+
+  return !/\s/.test(trimmed);
 };
 
 /**

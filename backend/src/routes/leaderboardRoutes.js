@@ -3,8 +3,11 @@ import LeaderboardController from '../controllers/leaderboardController.js';
 import jwt from 'jsonwebtoken';
 import config from '../config/index.js';
 import { getDb } from '../db/database.js';
+import { apiRateLimiter } from '../middleware/rateLimiter.js';
 
 const router = Router();
+
+router.use(apiRateLimiter);
 
 // Optional auth middleware so users can check leaderboard publicly or see their own standing if logged in
 function optionalAuth(req, res, next) {

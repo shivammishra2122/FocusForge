@@ -1,7 +1,6 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import morgan from 'morgan';
 import config from './config/index.js';
 import routes from './routes/index.js';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
@@ -12,10 +11,21 @@ const app = express();
 // Security HTTP headers
 app.use(helmet());
 
-// CORS configuration
+// Safe CORS configuration
+const allowedOrigins = config.corsOrigin && config.corsOrigin !== '*'
+  ? config.corsOrigin.split(',').map((o) => o.trim())
+  : ['http://localhost:8081', 'http://localhost:5001', 'http://localhost:19006', 'http://localhost:3000'];
+
 app.use(
   cors({
-    origin: config.corsOrigin === '*' ? '*' : config.corsOrigin.split(','),
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile app, curl, server-to-server)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
+        return callback(null, true);
+      }
+      return callback(new Error('Blocked by CORS policy'));
+    },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   })
@@ -26,9 +36,16 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Request Logging
-if (config.env !== 'test') {
-  app.use(morgan(config.env === 'development' ? 'dev' : 'combined'));
-}
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    if (config.env !== 'test') {
+      const duration = Date.now() - start;
+      console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} ${res.statusCode} ${duration}ms`);
+    }
+  });
+  next();
+});
 
 // Global API Rate Limiter
 app.use('/api', apiRateLimiter);

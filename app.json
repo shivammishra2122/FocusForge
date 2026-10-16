@@ -34,7 +34,8 @@
     },
     "plugins": [
       "expo-notifications",
-      "./plugins/focusforge-blocker/withAppBlocker"
+      "./plugins/focusforge-blocker/withAppBlocker",
+      "expo-font"
     ]
   }
 }
